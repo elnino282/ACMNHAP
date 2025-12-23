@@ -1,0 +1,13 @@
+{
+  "status": 200,
+  "code": "SUCCESS",
+  "message": "OK",
+  "result": {
+    "id": 5,
+    "username": "farmer1",
+    "status": "ACTIVE",
+    "roles": [
+      "FARMER"
+    ]
+  }
+}
