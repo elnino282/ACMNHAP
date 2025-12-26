@@ -10,7 +10,11 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
+<<<<<<< Updated upstream
     date = "2025-12-25T03:06:33+0700",
+=======
+    date = "2025-12-23T15:20:06+0700",
+>>>>>>> Stashed changes
     comments = "version: 1.5.5.Final, compiler: javac, environment: Java 17.0.17 (Microsoft)"
 )
 @Component
@@ -24,10 +28,14 @@ public class FarmerMapperImpl implements FarmerMapper {
 
         User.UserBuilder user = User.builder();
 
+<<<<<<< Updated upstream
         user.email( request.getEmail() );
         user.phone( request.getPhone() );
         user.fullName( request.getFullName() );
+=======
+>>>>>>> Stashed changes
         user.username( request.getUsername() );
+        user.password( request.getPassword() );
 
         return user.build();
     }
