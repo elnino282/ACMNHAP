@@ -22,6 +22,9 @@ public class CreateSupplyItemRequest {
     @Size(max = 150, message = "Name must not exceed 150 characters")
     String name;
 
+    @Size(max = 30, message = "Category must not exceed 30 characters")
+    String category;
+
     @Size(max = 150, message = "Active ingredient must not exceed 150 characters")
     String activeIngredient;
 
@@ -29,4 +32,6 @@ public class CreateSupplyItemRequest {
     String unit;
 
     Boolean restrictedFlag;
+
+    String description;
 }

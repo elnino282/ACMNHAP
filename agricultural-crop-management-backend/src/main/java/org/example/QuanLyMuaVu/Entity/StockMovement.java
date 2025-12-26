@@ -38,7 +38,7 @@ public class StockMovement {
     Integer id;
 
     @ManyToOne
-    @JoinColumn(name = "supply_lot_id", nullable = false)
+    @JoinColumn(name = "supply_lot_id")
     SupplyLot supplyLot;
 
     @ManyToOne
@@ -70,4 +70,3 @@ public class StockMovement {
     @Column(name = "note", columnDefinition = "TEXT")
     String note;
 }
-

@@ -63,8 +63,11 @@ public class FarmMapper {
                 .name(farm.getName())
                 .provinceId(farm.getProvince() != null ? farm.getProvince().getId() : null)
                 .wardId(farm.getWard() != null ? farm.getWard().getId() : null)
+                .provinceName(farm.getProvince() != null ? farm.getProvince().getName() : null)
+                .wardName(farm.getWard() != null ? farm.getWard().getName() : null)
                 .area(farm.getArea())
                 .active(farm.getActive())
+                .ownerUsername(farm.getOwner() != null ? farm.getOwner().getUsername() : null)
                 .build();
     }
 

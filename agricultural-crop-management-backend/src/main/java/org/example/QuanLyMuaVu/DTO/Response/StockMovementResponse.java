@@ -25,6 +25,7 @@ public class StockMovementResponse {
     Integer warehouseId;
     String warehouseName;
     Integer locationId;
+    String locationName;
     String movementType;
     BigDecimal quantity;
     LocalDateTime movementDate;
@@ -32,4 +33,3 @@ public class StockMovementResponse {
     Integer taskId;
     String note;
 }
-

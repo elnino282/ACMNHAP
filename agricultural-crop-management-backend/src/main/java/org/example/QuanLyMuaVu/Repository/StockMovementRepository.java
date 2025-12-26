@@ -9,13 +9,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
-@Repository
 public interface StockMovementRepository extends JpaRepository<StockMovement, Integer> {
 
   @Query("""
@@ -62,4 +60,16 @@ public interface StockMovementRepository extends JpaRepository<StockMovement, In
    * Used by AdminWarehouseController for warehouse movements.
    */
   Page<StockMovement> findByWarehouse(Warehouse warehouse, Pageable pageable);
+
+  /**
+   * Find all stock movements for a specific supply lot.
+   * Used for lot movement history tracking.
+   */
+  Page<StockMovement> findBySupplyLotOrderByMovementDateDesc(SupplyLot supplyLot, Pageable pageable);
+
+  /**
+   * Check if any stock movements exist for a supply lot.
+   * Used for deletion guard.
+   */
+  boolean existsBySupplyLot(SupplyLot supplyLot);
 }

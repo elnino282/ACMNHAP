@@ -10,6 +10,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -63,10 +64,31 @@ public class Incident {
     @Column(name = "deadline")
     LocalDate deadline;
 
+    // Assignment
+    @ManyToOne
+    @JoinColumn(name = "assignee_id")
+    User assignee;
+
+    // Optimistic locking
+    @Version
+    @Column(name = "version")
+    Integer version;
+
+    // Resolution tracking
     @Column(name = "resolved_at")
     LocalDateTime resolvedAt;
+
+    @ManyToOne
+    @JoinColumn(name = "resolved_by")
+    User resolvedBy;
+
+    @Column(name = "resolution_note", columnDefinition = "TEXT")
+    String resolutionNote;
+
+    // Cancellation tracking
+    @Column(name = "cancellation_reason", columnDefinition = "TEXT")
+    String cancellationReason;
 
     @Column(name = "created_at", columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
     LocalDateTime createdAt;
 }
-

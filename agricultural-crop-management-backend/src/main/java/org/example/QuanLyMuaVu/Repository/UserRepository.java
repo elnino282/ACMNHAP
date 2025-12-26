@@ -7,14 +7,18 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
 
-@Repository
 public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByUsername(String username);
+
+    boolean existsByEmail(String email);
+
+    boolean existsByEmailAndIdNot(String email, Long id);
+
+    boolean existsByUsernameAndIdNot(String username, Long id);
 
     Optional<User> findByUsername(String username);
 
@@ -35,6 +39,13 @@ public interface UserRepository extends JpaRepository<User, Long> {
             String roleCode,
             UserStatus status,
             String keyword,
-            Pageable pageable
-    );
+            Pageable pageable);
+
+    // Unified user search methods (all users)
+    @Query("SELECT u FROM User u WHERE " +
+            "(:keyword IS NULL OR LOWER(u.username) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+            "OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+            "OR LOWER(u.email) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
+            "AND (:status IS NULL OR u.status = :status)")
+    Page<User> searchAllUsers(@Param("keyword") String keyword, @Param("status") UserStatus status, Pageable pageable);
 }

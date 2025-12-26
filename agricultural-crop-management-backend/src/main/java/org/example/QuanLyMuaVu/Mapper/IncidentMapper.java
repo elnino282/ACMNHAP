@@ -22,7 +22,16 @@ public class IncidentMapper {
                 .description(incident.getDescription())
                 .status(incident.getStatus() != null ? incident.getStatus().name() : null)
                 .deadline(incident.getDeadline())
+                // Assignment
+                .assigneeId(incident.getAssignee() != null ? incident.getAssignee().getId() : null)
+                .assigneeUsername(incident.getAssignee() != null ? incident.getAssignee().getUsername() : null)
+                // Resolution tracking
                 .resolvedAt(incident.getResolvedAt())
+                .resolvedById(incident.getResolvedBy() != null ? incident.getResolvedBy().getId() : null)
+                .resolvedByUsername(incident.getResolvedBy() != null ? incident.getResolvedBy().getUsername() : null)
+                .resolutionNote(incident.getResolutionNote())
+                // Cancellation tracking
+                .cancellationReason(incident.getCancellationReason())
                 .createdAt(incident.getCreatedAt())
                 .build();
     }

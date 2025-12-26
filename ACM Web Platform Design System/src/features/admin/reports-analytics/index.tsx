@@ -1,4 +1,4 @@
-import { Calendar, Filter, Download, Settings, ChevronDown } from 'lucide-react';
+import { Calendar, Filter, Download, Settings, ChevronDown, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
@@ -12,13 +12,19 @@ import { getAlertIcon, getAlertBadge, getHealthStatus } from './utils';
 
 import { KPICard } from './components/KPICard';
 import { UserActivityChart } from './components/UserActivityChart';
-import { SeasonStatusChart } from './components/SeasonStatusChart';
-import { ExpensesYieldChart } from './components/ExpensesYieldChart';
 import { MetricsTable } from './components/MetricsTable';
 import { SystemHealthCard } from './components/SystemHealthCard';
 import { RecentAlertsCard } from './components/RecentAlertsCard';
 import { FilterDrawer } from './components/FilterDrawer';
 import { SettingsDrawer } from './components/SettingsDrawer';
+
+// NEW Analytics Components
+import { YieldReportCard } from './components/YieldReportCard';
+import { CostAnalysisChart } from './components/CostAnalysisChart';
+import { TaskPerformanceCard } from './components/TaskPerformanceCard';
+import { IncidentStatisticsCard } from './components/IncidentStatisticsCard';
+import { InventoryOnHandTable } from './components/InventoryOnHandTable';
+
 import type { DateRange } from './types';
 
 export const ReportsAnalytics: React.FC = () => {
@@ -37,22 +43,37 @@ export const ReportsAnalytics: React.FC = () => {
         setRegionFilter,
         roleFilter,
         setRoleFilter,
+        selectedYear,
+        setSelectedYear,
+
+        // Real API data
+        yieldReport,
+        costReport,
+        taskPerformance,
+        incidentStatistics,
+        inventoryOnHand,
+
+        // Legacy/Mock data
         kpiData,
-        seasonStatusData,
-        expensesData,
         metricsData,
         systemAlerts,
         systemHealth,
         filteredUserActivityData,
+
+        // Loading states
+        isLoading,
+        isDeferredLoading,
+
+        // Handlers
         handleExport,
         handleFilterClear,
         handleFilterApply,
         handleSettingsSave,
     } = useReportsAnalytics();
 
-    // Helper functions imported from utils
-    // getAlertIcon, getAlertBadge, getHealthStatus are now imported directly
-
+    // Generate year options (current year and past 5 years)
+    const currentYear = new Date().getFullYear();
+    const yearOptions = Array.from({ length: 6 }, (_, i) => currentYear - i);
 
     return (
         <div className="p-6 max-w-[1600px] mx-auto space-y-6">
@@ -65,18 +86,22 @@ export const ReportsAnalytics: React.FC = () => {
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <Select value={dateRange} onValueChange={(v: string) => setDateRange(v as DateRange)}>
-                        <SelectTrigger className="w-[160px]">
+                    {/* Year Selector */}
+                    <Select
+                        value={String(selectedYear)}
+                        onValueChange={(v) => setSelectedYear(parseInt(v))}
+                    >
+                        <SelectTrigger className="w-[120px]">
                             <Calendar className="w-4 h-4 mr-2" />
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="week">This Week</SelectItem>
-                            <SelectItem value="month">This Month</SelectItem>
-                            <SelectItem value="quarter">This Quarter</SelectItem>
-                            <SelectItem value="custom">Custom Range</SelectItem>
+                            {yearOptions.map(year => (
+                                <SelectItem key={year} value={String(year)}>{year}</SelectItem>
+                            ))}
                         </SelectContent>
                     </Select>
+
                     <Button variant="outline" onClick={() => setFilterOpen(true)}>
                         <Filter className="w-4 h-4 mr-2" />
                         Filters
@@ -107,6 +132,14 @@ export const ReportsAnalytics: React.FC = () => {
                 </div>
             </div>
 
+            {/* Loading indicator */}
+            {isLoading && (
+                <div className="flex items-center justify-center py-4">
+                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                    <span className="ml-2 text-muted-foreground">Loading reports...</span>
+                </div>
+            )}
+
             {/* KPI Overview Row */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
                 {kpiData.map((kpi, index) => (
@@ -114,18 +147,42 @@ export const ReportsAnalytics: React.FC = () => {
                 ))}
             </div>
 
-            {/* Charts Section */}
+            {/* Task Performance & Incident Statistics */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <TaskPerformanceCard
+                    data={taskPerformance}
+                    isLoading={isLoading}
+                />
+                <IncidentStatisticsCard
+                    data={incidentStatistics}
+                    isLoading={isLoading}
+                />
+            </div>
+
+            {/* Yield Report */}
+            <YieldReportCard
+                data={yieldReport}
+                isLoading={isDeferredLoading}
+            />
+
+            {/* Cost Analysis Chart */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <CostAnalysisChart
+                    data={costReport}
+                    isLoading={isDeferredLoading}
+                />
                 <UserActivityChart
                     filteredUserActivityData={filteredUserActivityData}
                     userActivityFilter={userActivityFilter}
                     setUserActivityFilter={setUserActivityFilter}
                 />
-                <SeasonStatusChart seasonStatusData={seasonStatusData} />
             </div>
 
-            {/* Expenses & Yield Bar Chart */}
-            <ExpensesYieldChart expensesData={expensesData} />
+            {/* Inventory On-Hand Summary */}
+            <InventoryOnHandTable
+                data={inventoryOnHand}
+                isLoading={isDeferredLoading}
+            />
 
             {/* Detailed Metrics Table */}
             <MetricsTable metricsData={metricsData} />

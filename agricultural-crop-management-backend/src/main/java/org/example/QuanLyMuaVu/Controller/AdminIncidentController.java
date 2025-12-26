@@ -9,6 +9,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.example.QuanLyMuaVu.DTO.Common.ApiResponse;
 import org.example.QuanLyMuaVu.DTO.Common.PageResponse;
+import org.example.QuanLyMuaVu.DTO.Request.CancelIncidentRequest;
+import org.example.QuanLyMuaVu.DTO.Request.ResolveIncidentRequest;
+import org.example.QuanLyMuaVu.DTO.Request.TriageIncidentRequest;
 import org.example.QuanLyMuaVu.DTO.Request.UpdateIncidentStatusRequest;
 import org.example.QuanLyMuaVu.DTO.Response.IncidentResponse;
 import org.example.QuanLyMuaVu.Service.AdminIncidentService;
@@ -17,6 +20,8 @@ import org.springframework.web.bind.annotation.*;
 
 /**
  * Admin REST endpoints for system-wide incident management.
+ * Implements state machine workflow: OPEN -> IN_PROGRESS -> RESOLVED (with
+ * optional CANCELLED)
  */
 @RestController
 @RequestMapping("/api/v1/admin/incidents")
@@ -26,6 +31,10 @@ import org.springframework.web.bind.annotation.*;
 public class AdminIncidentController {
 
     AdminIncidentService adminIncidentService;
+
+    // ═══════════════════════════════════════════════════════════════
+    // QUERY ENDPOINTS
+    // ═══════════════════════════════════════════════════════════════
 
     @Operation(summary = "List all incidents (Admin)", description = "Get paginated list of all incidents across the system with optional filters")
     @ApiResponses({
@@ -55,12 +64,60 @@ public class AdminIncidentController {
         return ApiResponse.success(adminIncidentService.getIncidentById(id));
     }
 
-    @Operation(summary = "Update incident status (Admin)", description = "Update incident status (OPEN -> IN_PROGRESS -> RESOLVED)")
+    // ═══════════════════════════════════════════════════════════════
+    // WORKFLOW ENDPOINTS (State Machine)
+    // ═══════════════════════════════════════════════════════════════
+
+    @Operation(summary = "Triage incident (OPEN -> IN_PROGRESS)", description = "Triage an open incident: set severity, deadline, and optionally assign to a user")
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Success"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Bad Request"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthorized"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid transition or deadline"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Incident not found"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "Concurrent modification conflict")
+    })
+    @PatchMapping("/{id}/triage")
+    public ApiResponse<IncidentResponse> triageIncident(
+            @PathVariable Integer id,
+            @Valid @RequestBody TriageIncidentRequest request) {
+        return ApiResponse.success(adminIncidentService.triage(id, request));
+    }
+
+    @Operation(summary = "Resolve incident (IN_PROGRESS -> RESOLVED)", description = "Resolve an in-progress incident with a resolution note")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Success"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid transition"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Incident not found"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "Concurrent modification conflict")
+    })
+    @PatchMapping("/{id}/resolve")
+    public ApiResponse<IncidentResponse> resolveIncident(
+            @PathVariable Integer id,
+            @Valid @RequestBody ResolveIncidentRequest request) {
+        return ApiResponse.success(adminIncidentService.resolve(id, request));
+    }
+
+    @Operation(summary = "Cancel incident (OPEN/IN_PROGRESS -> CANCELLED)", description = "Cancel an incident with a reason (e.g., duplicate, invalid)")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Success"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid transition"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Incident not found"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "Concurrent modification conflict")
+    })
+    @PatchMapping("/{id}/cancel")
+    public ApiResponse<IncidentResponse> cancelIncident(
+            @PathVariable Integer id,
+            @Valid @RequestBody CancelIncidentRequest request) {
+        return ApiResponse.success(adminIncidentService.cancel(id, request));
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // LEGACY ENDPOINT (kept for backward compatibility)
+    // ═══════════════════════════════════════════════════════════════
+
+    @Operation(summary = "Update incident status (Legacy)", description = "Generic status update - prefer using specific endpoints: /triage, /resolve, /cancel")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Success"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid transition"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Incident not found")
     })
     @PatchMapping("/{id}/status")

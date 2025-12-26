@@ -11,7 +11,9 @@ import org.example.QuanLyMuaVu.Exception.AppException;
 import org.example.QuanLyMuaVu.Exception.ErrorCode;
 import org.example.QuanLyMuaVu.Mapper.VarietyMapper;
 import org.example.QuanLyMuaVu.Repository.CropRepository;
+import org.example.QuanLyMuaVu.Repository.SeasonRepository;
 import org.example.QuanLyMuaVu.Repository.VarietyRepository;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +28,7 @@ public class VarietyService {
     VarietyRepository varietyRepository;
     CropRepository cropRepository;
     VarietyMapper varietyMapper;
+    SeasonRepository seasonRepository;
 
     public VarietyResponse create(VarietyRequest request) {
         Crop crop = cropRepository.findById(request.getCropId())
@@ -49,7 +52,20 @@ public class VarietyService {
     }
 
     public void delete(Integer id) {
-        varietyRepository.deleteById(id);
+        Variety variety = varietyRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND));
+
+        // Check if any season references this variety
+        if (seasonRepository.existsByVariety_Id(id)) {
+            throw new AppException(ErrorCode.VARIETY_HAS_SEASONS);
+        }
+
+        // Try delete with fallback for race condition
+        try {
+            varietyRepository.delete(variety);
+        } catch (DataIntegrityViolationException e) {
+            throw new AppException(ErrorCode.VARIETY_HAS_SEASONS);
+        }
     }
 
     public VarietyResponse get(Integer id) {

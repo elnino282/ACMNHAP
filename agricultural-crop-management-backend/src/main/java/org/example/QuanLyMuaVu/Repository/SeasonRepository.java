@@ -4,13 +4,12 @@ import org.example.QuanLyMuaVu.Entity.Season;
 import org.example.QuanLyMuaVu.Entity.User;
 import org.example.QuanLyMuaVu.Enums.SeasonStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 import java.time.LocalDate;
 import java.util.List;
 
-@Repository
-public interface SeasonRepository extends JpaRepository<Season, Integer> {
+public interface SeasonRepository extends JpaRepository<Season, Integer>, JpaSpecificationExecutor<Season> {
 
     List<Season> findBySeasonNameContainingIgnoreCase(String seasonName);
 
@@ -60,4 +59,16 @@ public interface SeasonRepository extends JpaRepository<Season, Integer> {
      * Used by AdminPlotController to get plot seasons.
      */
     List<Season> findByPlot(org.example.QuanLyMuaVu.Entity.Plot plot);
+
+    /**
+     * Check if any season references the given crop.
+     * Used for deletion guard in CropService.
+     */
+    boolean existsByCrop_Id(Integer cropId);
+
+    /**
+     * Check if any season references the given variety.
+     * Used for deletion guard in VarietyService.
+     */
+    boolean existsByVariety_Id(Integer varietyId);
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Leaf, Sprout, Search, RefreshCw, AlertCircle, Plus, Edit, X } from 'lucide-react';
+import { Leaf, Sprout, Search, RefreshCw, AlertCircle, Plus, Edit, X, Trash2, Loader2 } from 'lucide-react';
 import { adminCropApi, adminVarietyApi } from '@/services/api.admin';
 
 interface Crop {
@@ -22,23 +22,37 @@ export function CropsVarietiesPage() {
   const [error, setError] = useState<string | null>(null);
   const [crops, setCrops] = useState<Crop[]>([]);
   const [varieties, setVarieties] = useState<Variety[]>([]);
-  
+
   // Filter state
   const [selectedCropId, setSelectedCropId] = useState<number | null>(null);
-  
+
   // Form states
   const [showCropForm, setShowCropForm] = useState(false);
   const [showVarietyForm, setShowVarietyForm] = useState(false);
   const [editingCrop, setEditingCrop] = useState<Crop | null>(null);
   const [editingVariety, setEditingVariety] = useState<Variety | null>(null);
   const [formLoading, setFormLoading] = useState(false);
-  
+
   // Form fields
   const [cropName, setCropName] = useState('');
   const [cropDescription, setCropDescription] = useState('');
   const [varietyName, setVarietyName] = useState('');
   const [varietyDescription, setVarietyDescription] = useState('');
   const [varietyCropId, setVarietyCropId] = useState<number | null>(null);
+
+  // Delete confirmation state
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    type: 'crop' | 'variety';
+    id: number;
+    name: string;
+  } | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // Toast notification state
+  const [toast, setToast] = useState<{
+    type: 'success' | 'error';
+    message: string;
+  } | null>(null);
 
   const fetchCrops = async () => {
     setLoading(true);
@@ -112,7 +126,7 @@ export function CropsVarietiesPage() {
 
   const handleSaveCrop = async () => {
     if (!cropName.trim()) return;
-    
+
     setFormLoading(true);
     try {
       if (editingCrop) {
@@ -131,20 +145,20 @@ export function CropsVarietiesPage() {
 
   const handleSaveVariety = async () => {
     if (!varietyName.trim() || !varietyCropId) return;
-    
+
     setFormLoading(true);
     try {
       if (editingVariety) {
-        await adminVarietyApi.update(editingVariety.id, { 
-          name: varietyName, 
-          cropId: varietyCropId, 
-          description: varietyDescription 
+        await adminVarietyApi.update(editingVariety.id, {
+          name: varietyName,
+          cropId: varietyCropId,
+          description: varietyDescription
         });
       } else {
-        await adminVarietyApi.create({ 
-          name: varietyName, 
-          cropId: varietyCropId, 
-          description: varietyDescription 
+        await adminVarietyApi.create({
+          name: varietyName,
+          cropId: varietyCropId,
+          description: varietyDescription
         });
       }
       setShowVarietyForm(false);
@@ -155,6 +169,42 @@ export function CropsVarietiesPage() {
       setFormLoading(false);
     }
   };
+
+  const handleDelete = async () => {
+    if (!deleteConfirm) return;
+
+    setDeleteLoading(true);
+    try {
+      if (deleteConfirm.type === 'crop') {
+        await adminCropApi.delete(deleteConfirm.id);
+        setToast({ type: 'success', message: `Crop "${deleteConfirm.name}" deleted successfully` });
+        fetchCrops();
+      } else {
+        await adminVarietyApi.delete(deleteConfirm.id);
+        setToast({ type: 'success', message: `Variety "${deleteConfirm.name}" deleted successfully` });
+        fetchVarieties();
+      }
+      setDeleteConfirm(null);
+    } catch (err: any) {
+      // Handle 409 Conflict errors with specific backend messages
+      const errorMessage = err?.response?.data?.message ||
+        (deleteConfirm.type === 'crop'
+          ? 'Cannot delete this crop. It may have varieties or be referenced in seasons.'
+          : 'Cannot delete this variety. It may be referenced in seasons.');
+      setToast({ type: 'error', message: errorMessage });
+      setDeleteConfirm(null);
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  // Auto-hide toast after 5 seconds
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
   const renderCrops = () => (
     <div className="space-y-4">
@@ -221,13 +271,22 @@ export function CropsVarietiesPage() {
                   <td className="px-4 py-3 text-sm font-medium">{crop.cropName}</td>
                   <td className="px-4 py-3 text-sm text-muted-foreground">{crop.description || '-'}</td>
                   <td className="px-4 py-3">
-                    <button 
-                      onClick={() => openCropForm(crop)}
-                      className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
-                    >
-                      <Edit className="h-3 w-3" />
-                      Edit
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => openCropForm(crop)}
+                        className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+                      >
+                        <Edit className="h-3 w-3" />
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => setDeleteConfirm({ type: 'crop', id: crop.id, name: crop.cropName })}
+                        className="inline-flex items-center gap-1 text-sm text-destructive hover:underline"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                        Delete
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -319,13 +378,22 @@ export function CropsVarietiesPage() {
                   </td>
                   <td className="px-4 py-3 text-sm text-muted-foreground">{variety.description || '-'}</td>
                   <td className="px-4 py-3">
-                    <button 
-                      onClick={() => openVarietyForm(variety)}
-                      className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
-                    >
-                      <Edit className="h-3 w-3" />
-                      Edit
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => openVarietyForm(variety)}
+                        className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+                      >
+                        <Edit className="h-3 w-3" />
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => setDeleteConfirm({ type: 'variety', id: variety.id, name: variety.name })}
+                        className="inline-flex items-center gap-1 text-sm text-destructive hover:underline"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                        Delete
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -347,22 +415,20 @@ export function CropsVarietiesPage() {
       <div className="flex border-b border-border mb-6">
         <button
           onClick={() => setActiveTab('crops')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
-            activeTab === 'crops'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${activeTab === 'crops'
+            ? 'border-primary text-primary'
+            : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
         >
           <Leaf className="inline-block h-4 w-4 mr-2" />
           Crops
         </button>
         <button
           onClick={() => setActiveTab('varieties')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
-            activeTab === 'varieties'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${activeTab === 'varieties'
+            ? 'border-primary text-primary'
+            : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
         >
           <Sprout className="inline-block h-4 w-4 mr-2" />
           Varieties
@@ -483,6 +549,79 @@ export function CropsVarietiesPage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-card border border-border rounded-lg shadow-xl w-full max-w-md">
+            <div className="p-4 border-b border-border">
+              <h2 className="text-lg font-semibold text-destructive">
+                Delete {deleteConfirm.type === 'crop' ? 'Crop' : 'Variety'}
+              </h2>
+            </div>
+            <div className="p-4">
+              <p className="text-sm text-muted-foreground mb-4">
+                Are you sure you want to delete the {deleteConfirm.type}{' '}
+                <strong className="text-foreground">"{deleteConfirm.name}"</strong>?
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {deleteConfirm.type === 'crop'
+                  ? 'This action cannot be undone. The crop must not have any varieties or be referenced in seasons.'
+                  : 'This action cannot be undone. The variety must not be referenced in any seasons.'}
+              </p>
+            </div>
+            <div className="flex justify-end gap-2 p-4 border-t border-border">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                disabled={deleteLoading}
+                className="px-4 py-2 border border-border rounded-lg text-sm hover:bg-muted/50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleteLoading}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-destructive text-destructive-foreground rounded-lg text-sm hover:bg-destructive/90 disabled:opacity-50"
+              >
+                {deleteLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4" />
+                    Delete
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {toast && (
+        <div
+          className={`fixed bottom-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 ${toast.type === 'success'
+              ? 'bg-green-600 text-white'
+              : 'bg-destructive text-destructive-foreground'
+            }`}
+        >
+          {toast.type === 'success' ? (
+            <Leaf className="h-4 w-4" />
+          ) : (
+            <AlertCircle className="h-4 w-4" />
+          )}
+          <span className="text-sm">{toast.message}</span>
+          <button
+            onClick={() => setToast(null)}
+            className="ml-2 hover:opacity-70"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
       )}
     </div>

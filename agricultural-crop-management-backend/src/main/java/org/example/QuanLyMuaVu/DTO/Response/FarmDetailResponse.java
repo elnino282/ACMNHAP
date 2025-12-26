@@ -24,5 +24,7 @@ public class FarmDetailResponse {
     String wardName;
     BigDecimal area;
     Boolean active;
+    Long ownerId;
     String ownerUsername;
+    String ownerFullName;
 }

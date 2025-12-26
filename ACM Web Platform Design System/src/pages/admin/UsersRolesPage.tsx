@@ -1,20 +1,16 @@
 import { useState, useEffect } from 'react';
-import { Users, Shield, Search, RefreshCw, AlertCircle, MoreHorizontal, UserPlus, UserMinus } from 'lucide-react';
-import { adminUsersApi, adminRoleApi, type Role } from '@/services/api.admin';
+import { Users, Shield, Search, RefreshCw, AlertCircle, Plus, Edit2, Lock, Unlock, Trash2, UserPlus, UserMinus } from 'lucide-react';
+import { adminUsersApi, adminRoleApi, type Role, type AdminUser } from '@/services/api.admin';
+import { toast } from 'sonner';
+import { UserFormModal } from './components/UserFormModal';
 
-interface User {
-  id: number | string;
-  username: string;
-  email?: string;
-  phone?: string;
-  status?: string;
-  roles?: Role[];
-  farmsCount?: number;
-}
+// Re-export AdminUser as User for local usage
+type User = AdminUser;
 
 const STATUS_COLORS: Record<string, string> = {
   ACTIVE: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
   LOCKED: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+  INACTIVE: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400',
   PENDING: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
 };
 
@@ -29,15 +25,17 @@ export function UsersRolesPage() {
   const [totalPages, setTotalPages] = useState(0);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showUserDetail, setShowUserDetail] = useState(false);
+  const [showUserFormModal, setShowUserFormModal] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
 
   const fetchUsers = async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await adminUsersApi.listFarmers({ page, size: 20, keyword: searchTerm || undefined });
-      if (response?.result?.items) {
-        setUsers(response.result.items);
-        setTotalPages(response.result.totalPages || 0);
+      const response = await adminUsersApi.list({ page, size: 20, keyword: searchTerm || undefined });
+      if (response?.items) {
+        setUsers(response.items);
+        setTotalPages(response.totalPages || 0);
       }
     } catch (err) {
       setError('Failed to load users');
@@ -75,36 +73,72 @@ export function UsersRolesPage() {
   };
 
   const handleViewUser = async (user: User) => {
+    setEditingUser(user);
+    setShowUserFormModal(true);
+  };
+
+  const handleAddUser = () => {
+    setEditingUser(null);
+    setShowUserFormModal(true);
+  };
+
+  const handleUserFormSuccess = () => {
+    fetchUsers();
+    setEditingUser(null);
+  };
+
+  const handleToggleStatus = async (user: User) => {
+    const newStatus = user.status === 'ACTIVE' ? 'LOCKED' : 'ACTIVE';
     try {
-      const detail = await adminUsersApi.getFarmer(Number(user.id));
-      setSelectedUser(detail?.result || user);
-      setShowUserDetail(true);
+      await adminUsersApi.updateStatus(Number(user.id), { status: newStatus });
+      toast.success(`User ${newStatus === 'ACTIVE' ? 'activated' : 'locked'} successfully`);
+      fetchUsers();
     } catch (err) {
-      console.error('Failed to load user detail:', err);
-      setSelectedUser(user);
-      setShowUserDetail(true);
+      console.error('Failed to update status:', err);
+      toast.error('Failed to update user status');
+    }
+  };
+
+  const handleDeleteUser = async (user: User) => {
+    if (!window.confirm(`Are you sure you want to delete user "${user.username}"?`)) {
+      return;
+    }
+    try {
+      await adminUsersApi.delete(Number(user.id));
+      toast.success('User deleted successfully');
+      fetchUsers();
+    } catch (err: any) {
+      console.error('Failed to delete user:', err);
+      const errorCode = err?.response?.data?.code;
+      if (errorCode === 'ERR_USER_HAS_ASSOCIATED_DATA') {
+        toast.error('Cannot delete: User has associated farms. Lock the user instead.');
+      } else {
+        toast.error('Failed to delete user');
+      }
     }
   };
 
   const handleToggleFarmerRole = async (userId: number, hasRole: boolean) => {
     try {
-      const currentRoles = selectedUser?.roles?.map(r => r.code || r.name || '') || [];
+      const currentRoles = selectedUser?.roles || [];
       let newRoles: string[];
-      
+
       if (hasRole) {
         newRoles = currentRoles.filter(r => r !== 'FARMER' && r !== 'farmer');
       } else {
         newRoles = [...currentRoles, 'FARMER'];
       }
-      
-      await adminUsersApi.updateFarmerRoles(userId, newRoles);
-      
+
+      await adminUsersApi.update(userId, { roles: newRoles });
+
       // Refresh user detail
-      const detail = await adminUsersApi.getFarmer(userId);
-      setSelectedUser(detail?.result || selectedUser);
+      const detail = await adminUsersApi.getById(userId);
+      setSelectedUser(detail || selectedUser);
       fetchUsers();
+      toast.success('Roles updated successfully');
     } catch (err) {
       console.error('Failed to update roles:', err);
+      toast.error('Failed to update roles');
     }
   };
 
@@ -131,13 +165,22 @@ export function UsersRolesPage() {
             Search
           </button>
         </div>
-        <button
-          onClick={fetchUsers}
-          className="inline-flex items-center gap-2 px-3 py-2 border border-border rounded-lg text-sm hover:bg-muted/50"
-        >
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleAddUser}
+            className="inline-flex items-center gap-2 px-3 py-2 bg-primary text-primary-foreground rounded-lg text-sm hover:bg-primary/90"
+          >
+            <Plus className="h-4 w-4" />
+            Add User
+          </button>
+          <button
+            onClick={fetchUsers}
+            className="inline-flex items-center gap-2 px-3 py-2 border border-border rounded-lg text-sm hover:bg-muted/50"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+        </div>
       </div>
 
       <div className="bg-card border border-border rounded-lg overflow-hidden">
@@ -145,6 +188,7 @@ export function UsersRolesPage() {
           <thead className="bg-muted/50 border-b border-border">
             <tr>
               <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Username</th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Email</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Status</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Roles</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Actions</th>
@@ -153,14 +197,14 @@ export function UsersRolesPage() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
                   <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2" />
                   Loading...
                 </td>
               </tr>
             ) : error ? (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center">
+                <td colSpan={5} className="px-4 py-8 text-center">
                   <div className="flex flex-col items-center gap-2 text-destructive">
                     <AlertCircle className="h-6 w-6" />
                     {error}
@@ -172,7 +216,7 @@ export function UsersRolesPage() {
               </tr>
             ) : users.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
                   <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
                   No users found
                 </td>
@@ -182,36 +226,59 @@ export function UsersRolesPage() {
                 <tr key={user.id} className="border-b border-border hover:bg-muted/30">
                   <td className="px-4 py-3">
                     <div className="font-medium text-sm">{user.username}</div>
-                    {user.email && (
-                      <div className="text-xs text-muted-foreground">{user.email}</div>
+                    {user.fullName && (
+                      <div className="text-xs text-muted-foreground">{user.fullName}</div>
                     )}
                   </td>
+                  <td className="px-4 py-3 text-sm text-muted-foreground">
+                    {user.email || '—'}
+                  </td>
                   <td className="px-4 py-3 text-sm">
-                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
-                      STATUS_COLORS[user.status || 'ACTIVE'] || 'bg-gray-100 text-gray-800'
-                    }`}>
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${STATUS_COLORS[user.status || 'ACTIVE'] || 'bg-gray-100 text-gray-800'
+                      }`}>
                       {user.status || 'ACTIVE'}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-sm">
                     <div className="flex flex-wrap gap-1">
                       {user.roles?.map((role, idx) => (
-                        <span 
+                        <span
                           key={idx}
                           className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-primary/10 text-primary"
                         >
-                          {role.name || role.code}
+                          {role}
                         </span>
-                      )) || <span className="text-muted-foreground">-</span>}
+                      )) || <span className="text-muted-foreground">—</span>}
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <button 
-                      onClick={() => handleViewUser(user)}
-                      className="text-sm text-primary hover:underline"
-                    >
-                      View Details
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleViewUser(user)}
+                        className="p-1.5 rounded hover:bg-muted"
+                        title="Edit"
+                      >
+                        <Edit2 className="h-4 w-4 text-muted-foreground" />
+                      </button>
+                      <button
+                        onClick={() => handleToggleStatus(user)}
+                        className="p-1.5 rounded hover:bg-muted"
+                        title={user.status === 'ACTIVE' ? 'Lock User' : 'Activate User'}
+                      >
+                        {user.status === 'LOCKED' ? (
+                          <Lock className="h-4 w-4 text-red-500" />
+                        ) : (
+                          <Unlock className="h-4 w-4 text-green-500" />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteUser(user)}
+                        className="p-1.5 rounded hover:bg-muted"
+                        title="Delete"
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -308,7 +375,7 @@ export function UsersRolesPage() {
   );
 
   const userHasFarmerRole = selectedUser?.roles?.some(
-    r => r.code === 'FARMER' || r.name === 'FARMER' || r.code === 'farmer'
+    r => r === 'FARMER' || r === 'farmer'
   );
 
   return (
@@ -322,22 +389,20 @@ export function UsersRolesPage() {
       <div className="flex border-b border-border mb-6">
         <button
           onClick={() => { setActiveTab('users'); setPage(0); }}
-          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
-            activeTab === 'users'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${activeTab === 'users'
+            ? 'border-primary text-primary'
+            : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
         >
           <Users className="inline-block h-4 w-4 mr-2" />
           Users
         </button>
         <button
           onClick={() => { setActiveTab('roles'); setPage(0); }}
-          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
-            activeTab === 'roles'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${activeTab === 'roles'
+            ? 'border-primary text-primary'
+            : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
         >
           <Shield className="inline-block h-4 w-4 mr-2" />
           Roles
@@ -355,47 +420,46 @@ export function UsersRolesPage() {
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-semibold">User Details</h2>
-                <button 
+                <button
                   onClick={() => setShowUserDetail(false)}
                   className="p-2 hover:bg-muted rounded"
                 >
                   ✕
                 </button>
               </div>
-              
+
               <div className="space-y-4">
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Username</label>
                   <p className="text-sm">{selectedUser.username}</p>
                 </div>
-                
+
                 {selectedUser.email && (
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Email</label>
                     <p className="text-sm">{selectedUser.email}</p>
                   </div>
                 )}
-                
+
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Status</label>
                   <p className="text-sm">
-                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
-                      STATUS_COLORS[selectedUser.status || 'ACTIVE'] || 'bg-gray-100 text-gray-800'
-                    }`}>
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${STATUS_COLORS[selectedUser.status || 'ACTIVE'] || 'bg-gray-100 text-gray-800'
+                      }`}>
                       {selectedUser.status || 'ACTIVE'}
                     </span>
                   </p>
                 </div>
-                
+
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Roles</label>
                   <div className="flex flex-wrap gap-1 mt-1">
                     {selectedUser.roles?.map((role, idx) => (
-                      <span 
+                      <span
                         key={idx}
                         className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-primary/10 text-primary"
                       >
-                        {role.name || role.code}
+                        {role}
                       </span>
                     )) || <span className="text-muted-foreground text-sm">No roles assigned</span>}
                   </div>
@@ -407,11 +471,10 @@ export function UsersRolesPage() {
                   <div className="mt-2">
                     <button
                       onClick={() => handleToggleFarmerRole(Number(selectedUser.id), !!userHasFarmerRole)}
-                      className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${
-                        userHasFarmerRole
-                          ? 'bg-red-100 text-red-800 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400'
-                          : 'bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400'
-                      }`}
+                      className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${userHasFarmerRole
+                        ? 'bg-red-100 text-red-800 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400'
+                        : 'bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400'
+                        }`}
                     >
                       {userHasFarmerRole ? (
                         <>
@@ -432,6 +495,14 @@ export function UsersRolesPage() {
           </div>
         </div>
       )}
+
+      {/* User Form Modal */}
+      <UserFormModal
+        isOpen={showUserFormModal}
+        onOpenChange={setShowUserFormModal}
+        user={editingUser}
+        onSuccess={handleUserFormSuccess}
+      />
     </div>
   );
 }

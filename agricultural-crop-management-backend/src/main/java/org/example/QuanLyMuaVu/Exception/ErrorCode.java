@@ -28,6 +28,9 @@ public enum ErrorCode {
         USER_NOT_EXISTED("ERR_USER_NOT_EXISTED", "User does not exist", HttpStatus.NOT_FOUND),
         USERNAME_ALREADY_EXISTS("ERR_USERNAME_ALREADY_EXISTS", "Username is already in use", HttpStatus.CONFLICT),
         INVALID_CREDENTIALS("ERR_INVALID_CREDENTIALS", "Invalid username or password", HttpStatus.UNAUTHORIZED),
+        EMAIL_ALREADY_EXISTS("ERR_EMAIL_ALREADY_EXISTS", "Email is already in use", HttpStatus.CONFLICT),
+        USER_HAS_ASSOCIATED_DATA("ERR_USER_HAS_ASSOCIATED_DATA",
+                        "Cannot delete user: they have associated farms or data", HttpStatus.CONFLICT),
 
         // Farm / Plot errors
         PLOT_NOT_FOUND("ERR_PLOT_NOT_FOUND", "Plot not found", HttpStatus.NOT_FOUND),
@@ -80,6 +83,12 @@ public enum ErrorCode {
                         "Cannot modify field log of closed season", HttpStatus.BAD_REQUEST),
 
         INCIDENT_NOT_FOUND("ERR_INCIDENT_NOT_FOUND", "Incident not found", HttpStatus.NOT_FOUND),
+        INVALID_INCIDENT_STATUS_TRANSITION("ERR_INVALID_INCIDENT_STATUS_TRANSITION",
+                        "Invalid incident status transition", HttpStatus.BAD_REQUEST),
+        INVALID_DEADLINE("ERR_INVALID_DEADLINE",
+                        "Deadline must be today or later", HttpStatus.BAD_REQUEST),
+        OPTIMISTIC_LOCK_ERROR("ERR_OPTIMISTIC_LOCK_ERROR",
+                        "Record was modified by another user. Please reload and try again", HttpStatus.CONFLICT),
 
         EXPENSE_NOT_FOUND("ERR_EXPENSE_NOT_FOUND", "Expense not found", HttpStatus.NOT_FOUND),
         EXPENSE_PERIOD_LOCKED("ERR_EXPENSE_PERIOD_LOCKED", "Expenses cannot be modified in a closed or locked season",
@@ -96,7 +105,58 @@ public enum ErrorCode {
         WARD_NOT_IN_PROVINCE("ERR_WARD_NOT_IN_PROVINCE", "Ward does not belong to the specified province",
                         HttpStatus.BAD_REQUEST),
         ADDRESS_IMPORT_FAILED("ERR_ADDRESS_IMPORT_FAILED", "Failed to import address data",
-                        HttpStatus.INTERNAL_SERVER_ERROR);
+                        HttpStatus.INTERNAL_SERVER_ERROR),
+
+        // Admin Farm Management errors
+        INVALID_FARM_OWNER_ROLE("ERR_INVALID_FARM_OWNER_ROLE",
+                        "User is not a valid Farmer. Only users with FARMER role can own farms.",
+                        HttpStatus.BAD_REQUEST),
+
+        // Crop/Variety deletion guards
+        CROP_HAS_SEASONS("ERR_CROP_HAS_SEASONS",
+                        "Cannot delete this crop because it is referenced in an active or past Season.",
+                        HttpStatus.CONFLICT),
+        CROP_HAS_VARIETIES("ERR_CROP_HAS_VARIETIES",
+                        "Cannot delete this crop because it has associated varieties. Delete all varieties first.",
+                        HttpStatus.CONFLICT),
+        VARIETY_HAS_SEASONS("ERR_VARIETY_HAS_SEASONS",
+                        "Cannot delete this variety because it is referenced in an active or past Season.",
+                        HttpStatus.CONFLICT),
+
+        // Admin Intervention errors
+        SEASON_COMPLETION_REQUIRES_YIELD_AND_DATE("ERR_SEASON_COMPLETION_REQUIRES_YIELD_AND_DATE",
+                        "To complete a season, actual yield and end date are required.",
+                        HttpStatus.BAD_REQUEST),
+        INVALID_TASK_ASSIGNEE("ERR_INVALID_TASK_ASSIGNEE",
+                        "The specified user cannot be assigned to this task. User must be the farm owner.",
+                        HttpStatus.BAD_REQUEST),
+
+        // Inventory errors
+        INSUFFICIENT_STOCK("ERR_INSUFFICIENT_STOCK",
+                        "Insufficient stock for the outbound movement",
+                        HttpStatus.BAD_REQUEST),
+        WAREHOUSE_SEASON_FARM_MISMATCH("ERR_WAREHOUSE_SEASON_FARM_MISMATCH",
+                        "Warehouse and season must belong to the same farm",
+                        HttpStatus.BAD_REQUEST),
+        LOCATION_WAREHOUSE_MISMATCH("ERR_LOCATION_WAREHOUSE_MISMATCH",
+                        "Stock location does not belong to the specified warehouse",
+                        HttpStatus.BAD_REQUEST),
+        WAREHOUSE_NOT_FOUND("ERR_WAREHOUSE_NOT_FOUND", "Warehouse not found", HttpStatus.NOT_FOUND),
+        LOCATION_NOT_FOUND("ERR_LOCATION_NOT_FOUND", "Stock location not found", HttpStatus.NOT_FOUND),
+        SUPPLY_LOT_NOT_FOUND("ERR_SUPPLY_LOT_NOT_FOUND", "Supply lot not found", HttpStatus.NOT_FOUND),
+        INVALID_MOVEMENT_TYPE("ERR_INVALID_MOVEMENT_TYPE", "Invalid stock movement type", HttpStatus.BAD_REQUEST),
+
+        // Supplier errors
+        SUPPLIER_NOT_FOUND("ERR_SUPPLIER_NOT_FOUND", "Supplier not found", HttpStatus.NOT_FOUND),
+        SUPPLY_ITEM_NOT_FOUND("ERR_SUPPLY_ITEM_NOT_FOUND", "Supply item not found", HttpStatus.NOT_FOUND),
+        RESTRICTED_ITEM_REQUIRES_LICENSE("ERR_RESTRICTED_ITEM_REQUIRES_LICENSE",
+                        "Restricted items require supplier with valid license", HttpStatus.BAD_REQUEST),
+        SUPPLIER_HAS_ACTIVE_LOTS("ERR_SUPPLIER_HAS_ACTIVE_LOTS",
+                        "Cannot delete supplier with active supply lots", HttpStatus.CONFLICT),
+        SUPPLY_ITEM_HAS_ACTIVE_LOTS("ERR_SUPPLY_ITEM_HAS_ACTIVE_LOTS",
+                        "Cannot delete supply item with active supply lots", HttpStatus.CONFLICT),
+        SUPPLY_LOT_HAS_MOVEMENTS("ERR_SUPPLY_LOT_HAS_MOVEMENTS",
+                        "Cannot delete supply lot with recorded stock movements", HttpStatus.CONFLICT);
 
         ErrorCode(String code, String message, HttpStatus statusCode) {
                 this.code = code;

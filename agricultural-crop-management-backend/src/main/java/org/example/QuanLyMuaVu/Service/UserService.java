@@ -34,6 +34,9 @@ import org.springframework.stereotype.Service;
 import java.util.HashSet;
 import java.util.List;
 
+import org.example.QuanLyMuaVu.DTO.Request.UserUpdateRequest;
+import org.example.QuanLyMuaVu.Repository.FarmRepository;
+
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
@@ -41,15 +44,42 @@ import java.util.List;
 public class UserService {
     UserRepository userRepository;
     RoleRepository roleRepository;
+    FarmRepository farmRepository;
     FarmerMapper farmerMapper;
     PasswordEncoder passwordEncoder;
 
     public FarmerResponse createFarmer(FarmerCreationRequest request) {
+        // Validate unique username
+        if (userRepository.existsByUsername(request.getUsername())) {
+            throw new AppException(ErrorCode.USERNAME_ALREADY_EXISTS);
+        }
+
+        // Validate unique email (if provided)
+        if (request.getEmail() != null && !request.getEmail().isBlank()) {
+            if (userRepository.existsByEmail(request.getEmail())) {
+                throw new AppException(ErrorCode.EMAIL_ALREADY_EXISTS);
+            }
+        }
+
         User user = farmerMapper.toUser(request);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
 
+        // Handle roles from request, default to FARMER if not specified
         HashSet<Role> roles = new HashSet<>();
-        roleRepository.findByCode(PredefinedRole.FARMER_ROLE).ifPresent(roles::add);
+        if (request.getRoles() != null && !request.getRoles().isEmpty()) {
+            List<String> normalizedRoles = request.getRoles().stream()
+                    .filter(r -> r != null && !r.isBlank())
+                    .map(r -> r.trim().toUpperCase())
+                    .distinct()
+                    .toList();
+            var foundRoles = roleRepository.findByCodeIn(normalizedRoles);
+            roles.addAll(foundRoles);
+        }
+
+        // Default to FARMER role if no roles specified or found
+        if (roles.isEmpty()) {
+            roleRepository.findByCode(PredefinedRole.FARMER_ROLE).ifPresent(roles::add);
+        }
 
         if (roles.isEmpty()) {
             throw new AppException(ErrorCode.RESOURCE_NOT_FOUND);
@@ -208,10 +238,23 @@ public class UserService {
         return farmerMapper.toFarmerResponse(userRepository.save(user));
     }
 
+    /**
+     * Check if user can be deleted (has no associated farms)
+     */
+    public boolean canDeleteUser(Long userId) {
+        return !farmRepository.existsByOwner_Id(userId);
+    }
+
     public void deleteFarmer(Long farmerId) {
         if (!userRepository.existsById(farmerId)) {
             throw new AppException(ErrorCode.USER_NOT_FOUND);
         }
+
+        // Check for associated farms
+        if (!canDeleteUser(farmerId)) {
+            throw new AppException(ErrorCode.USER_HAS_ASSOCIATED_DATA);
+        }
+
         userRepository.deleteById(farmerId);
     }
 
@@ -254,6 +297,89 @@ public class UserService {
 
     public PageResponse<FarmerResponse> searchBuyers(String keyword, String status, int page, int size) {
         return searchUsersByRole(PredefinedRole.BUYER_ROLE, keyword, status, page, size);
+    }
+
+    /**
+     * Search all users (unified endpoint for Users & Roles admin page)
+     */
+    public PageResponse<FarmerResponse> searchAllUsers(String keyword, String status, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
+
+        String searchKeyword = (keyword != null && !keyword.isBlank()) ? keyword.trim() : null;
+
+        UserStatus userStatus = null;
+        if (status != null && !status.isBlank()) {
+            try {
+                userStatus = UserStatus.fromCode(status);
+            } catch (IllegalArgumentException ex) {
+                throw new AppException(ErrorCode.BAD_REQUEST);
+            }
+        }
+
+        Page<User> pageData = userRepository.searchAllUsers(searchKeyword, userStatus, pageable);
+
+        List<FarmerResponse> items = pageData.getContent()
+                .stream()
+                .map(farmerMapper::toFarmerResponse)
+                .toList();
+
+        return PageResponse.of(pageData, items);
+    }
+
+    /**
+     * Update user information (for admin)
+     */
+    public FarmerResponse updateUser(Long userId, UserUpdateRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        // Validate unique username (if changed)
+        if (request.getUsername() != null && !request.getUsername().isBlank()
+                && !request.getUsername().equals(user.getUsername())) {
+            if (userRepository.existsByUsernameAndIdNot(request.getUsername(), userId)) {
+                throw new AppException(ErrorCode.USERNAME_ALREADY_EXISTS);
+            }
+        }
+
+        // Validate unique email (if changed)
+        if (request.getEmail() != null && !request.getEmail().isBlank()
+                && !request.getEmail().equals(user.getEmail())) {
+            if (userRepository.existsByEmailAndIdNot(request.getEmail(), userId)) {
+                throw new AppException(ErrorCode.EMAIL_ALREADY_EXISTS);
+            }
+        }
+
+        // Update basic fields
+        farmerMapper.updateUserFromRequest(user, request);
+
+        // Handle roles update if provided
+        if (request.getRoles() != null && !request.getRoles().isEmpty()) {
+            List<String> normalizedRoles = request.getRoles().stream()
+                    .filter(r -> r != null && !r.isBlank())
+                    .map(r -> r.trim().toUpperCase())
+                    .distinct()
+                    .toList();
+
+            if (!normalizedRoles.isEmpty()) {
+                var roles = roleRepository.findByCodeIn(normalizedRoles);
+                if (roles.size() != normalizedRoles.size()) {
+                    throw new AppException(ErrorCode.RESOURCE_NOT_FOUND);
+                }
+                user.setRoles(new HashSet<>(roles));
+            }
+        }
+
+        // Handle status update if provided
+        if (request.getStatus() != null && !request.getStatus().isBlank()) {
+            try {
+                UserStatus newStatus = UserStatus.fromCode(request.getStatus());
+                user.setStatus(newStatus);
+            } catch (IllegalArgumentException ex) {
+                throw new AppException(ErrorCode.BAD_REQUEST);
+            }
+        }
+
+        return farmerMapper.toFarmerResponse(userRepository.save(user));
     }
 
     public FarmerResponse adminUpdateUserProfile(Long userId, UserProfileUpdateRequest request) {

@@ -29,7 +29,19 @@ public class IncidentResponse {
     String description;
     String status;
     LocalDate deadline;
+
+    // Assignment
+    Long assigneeId;
+    String assigneeUsername;
+
+    // Resolution tracking
     LocalDateTime resolvedAt;
+    Long resolvedById;
+    String resolvedByUsername;
+    String resolutionNote;
+
+    // Cancellation tracking
+    String cancellationReason;
+
     LocalDateTime createdAt;
 }
-

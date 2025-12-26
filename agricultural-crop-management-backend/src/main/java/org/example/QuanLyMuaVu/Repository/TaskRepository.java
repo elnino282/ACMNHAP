@@ -3,13 +3,12 @@ package org.example.QuanLyMuaVu.Repository;
 import org.example.QuanLyMuaVu.Entity.Task;
 import org.example.QuanLyMuaVu.Enums.TaskStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 import java.time.LocalDate;
 import java.util.List;
 
-@Repository
-public interface TaskRepository extends JpaRepository<Task, Integer> {
+public interface TaskRepository extends JpaRepository<Task, Integer>, JpaSpecificationExecutor<Task> {
     List<Task> findByTitleContainingIgnoreCase(String title);
 
     List<Task> findAllBySeason_Id(Integer seasonId);
@@ -27,4 +26,16 @@ public interface TaskRepository extends JpaRepository<Task, Integer> {
      * Used by FarmerDashboardService for recent activity.
      */
     List<Task> findTop5ByUser_IdOrderByCreatedAtDesc(Long userId);
+
+    /**
+     * Find all tasks for a season that are not in DONE status.
+     * Used by AdminSeasonService to auto-cancel pending tasks on season completion.
+     */
+    List<Task> findBySeason_IdAndStatusNot(Integer seasonId, TaskStatus status);
+
+    /**
+     * Count tasks for a season that are not in DONE status.
+     * Used for UX warning when completing a season.
+     */
+    Long countBySeason_IdAndStatusNot(Integer seasonId, TaskStatus status);
 }

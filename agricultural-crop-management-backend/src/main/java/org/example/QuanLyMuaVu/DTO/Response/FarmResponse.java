@@ -20,6 +20,9 @@ public class FarmResponse {
     String name;
     Integer provinceId;
     Integer wardId;
+    String provinceName;
+    String wardName;
     BigDecimal area;
     Boolean active;
+    String ownerUsername;
 }

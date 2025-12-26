@@ -10,6 +10,9 @@ import org.example.QuanLyMuaVu.Exception.AppException;
 import org.example.QuanLyMuaVu.Exception.ErrorCode;
 import org.example.QuanLyMuaVu.Mapper.CropMapper;
 import org.example.QuanLyMuaVu.Repository.CropRepository;
+import org.example.QuanLyMuaVu.Repository.SeasonRepository;
+import org.example.QuanLyMuaVu.Repository.VarietyRepository;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +25,8 @@ import java.util.List;
 public class CropService {
     CropRepository cropRepository;
     CropMapper cropMapper;
+    SeasonRepository seasonRepository;
+    VarietyRepository varietyRepository;
 
     public CropResponse create(CropRequest request) {
         if (cropRepository.existsByCropNameIgnoreCase(request.getCropName())) {
@@ -57,6 +62,22 @@ public class CropService {
     public void delete(Integer id) {
         Crop crop = cropRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.CROP_NOT_FOUND));
-        cropRepository.delete(crop);
+
+        // Check if crop has child varieties (prevent orphan data)
+        if (varietyRepository.existsByCrop_Id(id)) {
+            throw new AppException(ErrorCode.CROP_HAS_VARIETIES);
+        }
+
+        // Check if any season references this crop
+        if (seasonRepository.existsByCrop_Id(id)) {
+            throw new AppException(ErrorCode.CROP_HAS_SEASONS);
+        }
+
+        // Try delete with fallback for race condition
+        try {
+            cropRepository.delete(crop);
+        } catch (DataIntegrityViolationException e) {
+            throw new AppException(ErrorCode.CROP_HAS_SEASONS);
+        }
     }
 }

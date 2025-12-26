@@ -39,7 +39,7 @@ export function FarmsPlotsPage() {
   const [plots, setPlots] = useState<Plot[]>([]);
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
-  
+
   // Detail states
   const [selectedFarm, setSelectedFarm] = useState<Farm | null>(null);
   const [farmPlots, setFarmPlots] = useState<Plot[]>([]);
@@ -48,7 +48,7 @@ export function FarmsPlotsPage() {
   const [showFarmDetail, setShowFarmDetail] = useState(false);
   const [showPlotDetail, setShowPlotDetail] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
-  
+
   // Filter state
   const [farmFilter, setFarmFilter] = useState<number | null>(null);
 
@@ -73,9 +73,9 @@ export function FarmsPlotsPage() {
     setLoading(true);
     setError(null);
     try {
-      const response = await adminPlotApi.list({ 
-        page, 
-        size: 20, 
+      const response = await adminPlotApi.list({
+        page,
+        size: 20,
         keyword: searchTerm || undefined,
         farmId: farmFilter || undefined
       });
@@ -227,11 +227,10 @@ export function FarmsPlotsPage() {
                   <td className="px-4 py-3 text-sm">{farm.ownerUsername || '-'}</td>
                   <td className="px-4 py-3 text-sm">{farm.area?.toFixed(2) || '-'}</td>
                   <td className="px-4 py-3 text-sm">
-                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
-                      farm.active 
-                        ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                        : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
-                    }`}>
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${farm.active
+                      ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                      : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                      }`}>
                       {farm.active ? 'Active' : 'Inactive'}
                     </span>
                   </td>
@@ -239,11 +238,11 @@ export function FarmsPlotsPage() {
                     {[farm.wardName, farm.provinceName].filter(Boolean).join(', ') || '-'}
                   </td>
                   <td className="px-4 py-3">
-                    <button 
+                    <button
                       onClick={() => handleViewFarm(farm)}
                       className="text-sm text-primary hover:underline inline-flex items-center gap-1"
                     >
-                      View Plots <ChevronRight className="h-4 w-4" />
+                      View <ChevronRight className="h-4 w-4" />
                     </button>
                   </td>
                 </tr>
@@ -358,7 +357,7 @@ export function FarmsPlotsPage() {
                   <td className="px-4 py-3 text-sm">{plot.area?.toFixed(2) || '-'}</td>
                   <td className="px-4 py-3 text-sm">{plot.soilType || '-'}</td>
                   <td className="px-4 py-3">
-                    <button 
+                    <button
                       onClick={() => handleViewPlot(plot)}
                       className="text-sm text-primary hover:underline inline-flex items-center gap-1"
                     >
@@ -407,22 +406,20 @@ export function FarmsPlotsPage() {
       <div className="flex border-b border-border mb-6">
         <button
           onClick={() => { setActiveTab('farms'); setPage(0); setSearchTerm(''); }}
-          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
-            activeTab === 'farms'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${activeTab === 'farms'
+            ? 'border-primary text-primary'
+            : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
         >
           <Building2 className="inline-block h-4 w-4 mr-2" />
           Farms
         </button>
         <button
           onClick={() => { setActiveTab('plots'); setPage(0); setSearchTerm(''); fetchFarms(); }}
-          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
-            activeTab === 'plots'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${activeTab === 'plots'
+            ? 'border-primary text-primary'
+            : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
         >
           <MapPin className="inline-block h-4 w-4 mr-2" />
           Plots
@@ -436,18 +433,18 @@ export function FarmsPlotsPage() {
       {/* Farm Detail Drawer */}
       {showFarmDetail && selectedFarm && (
         <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm">
-          <div className="fixed right-0 top-0 h-full w-full max-w-lg bg-card border-l border-border shadow-lg overflow-auto">
+          <div className="fixed right-0 top-0 h-full w-full max-w-md bg-card border-l border-border shadow-lg overflow-auto">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-semibold">Farm Details</h2>
-                <button 
+                <button
                   onClick={() => setShowFarmDetail(false)}
                   className="p-2 hover:bg-muted rounded"
                 >
                   ✕
                 </button>
               </div>
-              
+
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -465,17 +462,16 @@ export function FarmsPlotsPage() {
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Status</label>
                     <p className="text-sm">
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
-                        selectedFarm.active 
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}>
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${selectedFarm.active
+                        ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                        : 'bg-gray-100 text-gray-800'
+                        }`}>
                         {selectedFarm.active ? 'Active' : 'Inactive'}
                       </span>
                     </p>
                   </div>
                 </div>
-                
+
                 <div className="pt-4 border-t border-border">
                   <h3 className="text-sm font-medium mb-3">Plots ({farmPlots.length})</h3>
                   {detailLoading ? (
@@ -496,7 +492,7 @@ export function FarmsPlotsPage() {
                                 {plot.area?.toFixed(2) || '-'} ha • {plot.soilType || 'No soil type'}
                               </p>
                             </div>
-                            <button 
+                            <button
                               onClick={() => { setShowFarmDetail(false); handleViewPlot(plot); }}
                               className="text-xs text-primary hover:underline"
                             >
@@ -521,14 +517,14 @@ export function FarmsPlotsPage() {
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-semibold">Plot Details</h2>
-                <button 
+                <button
                   onClick={() => setShowPlotDetail(false)}
                   className="p-2 hover:bg-muted rounded"
                 >
                   ✕
                 </button>
               </div>
-              
+
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -548,7 +544,7 @@ export function FarmsPlotsPage() {
                     <p className="text-sm">{selectedPlot.soilType || '-'}</p>
                   </div>
                 </div>
-                
+
                 <div className="pt-4 border-t border-border">
                   <h3 className="text-sm font-medium mb-3">Seasons ({plotSeasons.length})</h3>
                   {detailLoading ? (
@@ -569,9 +565,8 @@ export function FarmsPlotsPage() {
                                 {season.cropName} • {new Date(season.startDate).toLocaleDateString()}
                               </p>
                             </div>
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
-                              STATUS_COLORS[season.status] || 'bg-gray-100 text-gray-800'
-                            }`}>
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${STATUS_COLORS[season.status] || 'bg-gray-100 text-gray-800'
+                              }`}>
                               {season.status}
                             </span>
                           </div>

@@ -26,6 +26,10 @@ public class AdminReportsController {
 
     AdminReportsService adminReportsService;
 
+    // ═══════════════════════════════════════════════════════════════
+    // LEGACY ENDPOINTS (backward compatibility)
+    // ═══════════════════════════════════════════════════════════════
+
     @Operation(summary = "Expenses by month", description = "Get monthly expense totals across the system")
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Success"),
@@ -70,5 +74,81 @@ public class AdminReportsController {
     public ApiResponse<List<AdminReportResponse.MovementSummary>> getInventoryMovements(
             @Parameter(description = "Year to filter") @RequestParam(value = "year", required = false) Integer year) {
         return ApiResponse.success(adminReportsService.getInventoryMovements(year));
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // NEW ANALYTICS ENDPOINTS
+    // ═══════════════════════════════════════════════════════════════
+
+    @Operation(summary = "Yield Report", description = "Compare expected vs actual yield by season/crop/plot")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Success"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthorized"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden")
+    })
+    @GetMapping("/yield")
+    public ApiResponse<List<AdminReportResponse.YieldReport>> getYieldReport(
+            @Parameter(description = "Year to filter by season start date") @RequestParam(value = "year", required = false) Integer year,
+            @Parameter(description = "Optional crop ID to filter") @RequestParam(value = "cropId", required = false) Integer cropId) {
+        return ApiResponse.success(adminReportsService.getYieldReport(year, cropId));
+    }
+
+    @Operation(summary = "Cost Report", description = "Total expenses per season with cost per kg calculation")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Success"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthorized"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden")
+    })
+    @GetMapping("/cost")
+    public ApiResponse<List<AdminReportResponse.CostReport>> getCostReport(
+            @Parameter(description = "Year to filter by season start date") @RequestParam(value = "year", required = false) Integer year) {
+        return ApiResponse.success(adminReportsService.getCostReport(year));
+    }
+
+    @Operation(summary = "Revenue Report", description = "Total revenue from harvests (quantity * unit price)")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Success"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthorized"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden")
+    })
+    @GetMapping("/revenue")
+    public ApiResponse<List<AdminReportResponse.RevenueReport>> getRevenueReport(
+            @Parameter(description = "Year to filter by season start date") @RequestParam(value = "year", required = false) Integer year) {
+        return ApiResponse.success(adminReportsService.getRevenueReport(year));
+    }
+
+    @Operation(summary = "Task Performance", description = "Task completion rate and overdue rate")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Success"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthorized"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden")
+    })
+    @GetMapping("/task-performance")
+    public ApiResponse<AdminReportResponse.TaskPerformanceReport> getTaskPerformance(
+            @Parameter(description = "Year to filter by task created date") @RequestParam(value = "year", required = false) Integer year) {
+        return ApiResponse.success(adminReportsService.getTaskPerformance(year));
+    }
+
+    @Operation(summary = "Inventory On-Hand", description = "Current stock snapshot by warehouse")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Success"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthorized"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden")
+    })
+    @GetMapping("/inventory-onhand")
+    public ApiResponse<List<AdminReportResponse.InventoryOnHandReport>> getInventoryOnHand() {
+        return ApiResponse.success(adminReportsService.getInventoryOnHand());
+    }
+
+    @Operation(summary = "Incident Statistics", description = "Incident breakdown by type, severity, status with resolution metrics")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Success"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthorized"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden")
+    })
+    @GetMapping("/incident-statistics")
+    public ApiResponse<AdminReportResponse.IncidentStatisticsReport> getIncidentStatistics(
+            @Parameter(description = "Year to filter by incident created date") @RequestParam(value = "year", required = false) Integer year) {
+        return ApiResponse.success(adminReportsService.getIncidentStatistics(year));
     }
 }

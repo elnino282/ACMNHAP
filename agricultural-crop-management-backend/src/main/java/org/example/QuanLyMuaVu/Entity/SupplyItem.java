@@ -2,6 +2,8 @@ package org.example.QuanLyMuaVu.Entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -13,6 +15,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.FieldDefaults;
+import org.example.QuanLyMuaVu.Enums.SupplyCategory;
 
 @Getter
 @Setter
@@ -32,6 +35,10 @@ public class SupplyItem {
     @Column(name = "name", nullable = false, length = 150)
     String name;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "category", length = 30)
+    SupplyCategory category;
+
     @Column(name = "active_ingredient", length = 150)
     String activeIngredient;
 
@@ -40,5 +47,7 @@ public class SupplyItem {
 
     @Column(name = "restricted_flag")
     Boolean restrictedFlag;
-}
 
+    @Column(name = "description", columnDefinition = "TEXT")
+    String description;
+}

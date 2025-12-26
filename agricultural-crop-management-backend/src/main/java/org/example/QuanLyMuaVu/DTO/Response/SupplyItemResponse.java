@@ -18,7 +18,9 @@ public class SupplyItemResponse {
 
     Integer id;
     String name;
+    String category;
     String activeIngredient;
     String unit;
     Boolean restrictedFlag;
+    String description;
 }

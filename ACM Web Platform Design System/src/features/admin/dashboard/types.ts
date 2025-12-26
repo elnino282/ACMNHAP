@@ -90,3 +90,35 @@ export interface PendingApproval {
   priority: Priority;
 }
 
+/**
+ * Risk level for seasons based on riskScore
+ */
+export type RiskLevel = 'high' | 'medium' | 'low';
+
+/**
+ * Transformed risky season with calculated risk level
+ */
+export interface TransformedRiskySeason {
+  seasonId: number;
+  seasonName: string;
+  farmName: string | null;
+  plotName: string | null;
+  status: string | null;
+  incidentCount: number;
+  overdueTaskCount: number;
+  riskScore: number;
+  riskLevel: RiskLevel;
+}
+
+/**
+ * Transformed inventory health with warning flag
+ */
+export interface TransformedInventoryHealth {
+  farmId: number;
+  farmName: string;
+  expiredCount: number;
+  expiringSoonCount: number;
+  totalAtRisk: number;
+  hasWarning: boolean;
+}
+

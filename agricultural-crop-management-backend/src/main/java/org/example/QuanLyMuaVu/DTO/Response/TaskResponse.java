@@ -20,11 +20,18 @@ import java.time.LocalDateTime;
 public class TaskResponse {
     Integer id;
     String userName;
+    Long userId;
     String seasonName;
+    Integer seasonId;
+    Integer farmId;
+    String farmName;
+    Integer cropId;
+    String cropName;
     String title;
     String description;
     LocalDate plannedDate;
     LocalDate dueDate;
     String status;
+    String notes;
     LocalDateTime createdAt;
 }

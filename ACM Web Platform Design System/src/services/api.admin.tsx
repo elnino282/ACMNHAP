@@ -20,7 +20,11 @@ export type Role = z.infer<typeof RoleSchema>;
 export const AdminUserSchema = z.object({
   id: z.union([z.string(), z.number()]),
   username: z.string(),
-  roles: z.array(RoleSchema).optional(),
+  email: z.string().nullable().optional(),
+  fullName: z.string().nullable().optional(),
+  phone: z.string().nullable().optional(),
+  status: z.string().nullable().optional(),
+  roles: z.array(z.string()).optional(),
 });
 
 export type AdminUser = z.infer<typeof AdminUserSchema>;
@@ -37,9 +41,24 @@ export type AdminUserListParams = z.infer<typeof AdminUserListParamsSchema>;
 export const AdminUserCreateRequestSchema = z.object({
   username: z.string().min(3, 'Username must be at least 3 characters'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
+  email: z.string().email('Invalid email format').optional().or(z.literal('')),
+  fullName: z.string().optional(),
+  phone: z.string().optional(),
+  roles: z.array(z.string()).optional(),
 });
 
 export type AdminUserCreateRequest = z.infer<typeof AdminUserCreateRequestSchema>;
+
+export const AdminUserUpdateRequestSchema = z.object({
+  username: z.string().min(3, 'Username must be at least 3 characters').optional(),
+  email: z.string().email('Invalid email format').optional().or(z.literal('')),
+  fullName: z.string().optional(),
+  phone: z.string().optional(),
+  roles: z.array(z.string()).optional(),
+  status: z.string().optional(),
+});
+
+export type AdminUserUpdateRequest = z.infer<typeof AdminUserUpdateRequestSchema>;
 
 export const AdminUserStatusUpdateSchema = z.object({
   status: z.string().min(1, 'Status is required'),
@@ -91,6 +110,11 @@ export type UserSummary = z.infer<typeof UserSummarySchema>;
 // ═══════════════════════════════════════════════════════════════
 
 export const adminKeys = {
+  // All Users (unified)
+  users: ['admin', 'users'] as const,
+  userList: (params?: AdminUserListParams) => [...adminKeys.users, 'list', params] as const,
+  userDetail: (id: number) => [...adminKeys.users, 'detail', id] as const,
+  userCanDelete: (id: number) => [...adminKeys.users, 'canDelete', id] as const,
   // Farmers
   farmers: ['admin', 'farmers'] as const,
   farmerList: (params?: AdminUserListParams) => [...adminKeys.farmers, 'list', params] as const,
@@ -106,6 +130,63 @@ export const adminKeys = {
   documentList: () => [...adminKeys.documents, 'list'] as const,
   // Summary
   summary: ['admin', 'summary'] as const,
+};
+
+// ═══════════════════════════════════════════════════════════════
+// UNIFIED USER MANAGEMENT API
+// ═══════════════════════════════════════════════════════════════
+
+export const adminUsersApi = {
+  /** GET /api/v1/admin/users - Search all users */
+  list: async (params?: AdminUserListParams): Promise<PageResponse<AdminUser>> => {
+    const validatedParams = params ? AdminUserListParamsSchema.parse(params) : undefined;
+    const response = await httpClient.get('/api/v1/admin/users', { params: validatedParams });
+    return parsePageResponse(response.data, AdminUserSchema);
+  },
+
+  /** GET /api/v1/admin/users/{id} - Get user detail */
+  getById: async (id: number): Promise<AdminUser> => {
+    const response = await httpClient.get(`/api/v1/admin/users/${id}`);
+    return parseApiResponse(response.data, AdminUserSchema);
+  },
+
+  /** POST /api/v1/admin/users - Create user account */
+  create: async (data: AdminUserCreateRequest): Promise<AdminUser> => {
+    const validatedPayload = AdminUserCreateRequestSchema.parse(data);
+    const response = await httpClient.post('/api/v1/admin/users', validatedPayload);
+    return parseApiResponse(response.data, AdminUserSchema);
+  },
+
+  /** PUT /api/v1/admin/users/{id} - Update user */
+  update: async (id: number, data: AdminUserUpdateRequest): Promise<AdminUser> => {
+    const validatedPayload = AdminUserUpdateRequestSchema.parse(data);
+    const response = await httpClient.put(`/api/v1/admin/users/${id}`, validatedPayload);
+    return parseApiResponse(response.data, AdminUserSchema);
+  },
+
+  /** PATCH /api/v1/admin/users/{id}/status - Update user status */
+  updateStatus: async (id: number, data: AdminUserStatusUpdate): Promise<AdminUser> => {
+    const validatedPayload = AdminUserStatusUpdateSchema.parse(data);
+    const response = await httpClient.patch(`/api/v1/admin/users/${id}/status`, validatedPayload);
+    return parseApiResponse(response.data, AdminUserSchema);
+  },
+
+  /** PATCH /api/v1/admin/users/{id}/password - Reset user password */
+  resetPassword: async (id: number, password: string): Promise<AdminUser> => {
+    const response = await httpClient.patch(`/api/v1/admin/users/${id}/password`, { password });
+    return parseApiResponse(response.data, AdminUserSchema);
+  },
+
+  /** GET /api/v1/admin/users/{id}/can-delete - Check if user can be deleted */
+  canDelete: async (id: number): Promise<boolean> => {
+    const response = await httpClient.get(`/api/v1/admin/users/${id}/can-delete`);
+    return parseApiResponse(response.data, z.boolean());
+  },
+
+  /** DELETE /api/v1/admin/users/{id} - Delete user */
+  delete: async (id: number): Promise<void> => {
+    await httpClient.delete(`/api/v1/admin/users/${id}`);
+  },
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -234,9 +315,83 @@ export const adminSummaryApi = {
 };
 
 // ═══════════════════════════════════════════════════════════════
-// ADMIN DASHBOARD API
+// ADMIN DASHBOARD API (Real-time Stats)
 // ═══════════════════════════════════════════════════════════════
 
+// Business-validated schemas matching backend DashboardStatsDTO
+export const DashboardStatsSummarySchema = z.object({
+  totalUsers: z.number().int().nonnegative(),
+  totalFarms: z.number().int().nonnegative(),
+  totalPlots: z.number().int().nonnegative(),
+  totalSeasons: z.number().int().nonnegative(),
+});
+
+export const UserRoleCountSchema = z.object({
+  role: z.string(),
+  total: z.number().int().nonnegative(),
+});
+
+export const UserStatusCountSchema = z.object({
+  status: z.string().nullable(),
+  total: z.number().int().nonnegative(),
+});
+
+export const SeasonStatusCountSchema = z.object({
+  status: z.string().nullable(),
+  total: z.number().int().nonnegative(),
+});
+
+export const RiskySeasonSchema = z.object({
+  seasonId: z.number().int().positive(),
+  seasonName: z.string(),
+  farmName: z.string().nullable(),
+  plotName: z.string().nullable(),
+  status: z.string().nullable(),
+  incidentCount: z.number().int().nonnegative(),
+  overdueTaskCount: z.number().int().nonnegative(),
+  riskScore: z.number().int().nonnegative(),
+});
+
+export const InventoryHealthSchema = z.object({
+  farmId: z.number().int().positive(),
+  farmName: z.string(),
+  expiredCount: z.number().int().nonnegative(),
+  expiringSoonCount: z.number().int().nonnegative(),
+  totalAtRisk: z.number().int().nonnegative(),
+});
+
+export const DashboardStatsSchema = z.object({
+  summary: DashboardStatsSummarySchema,
+  userRoleCounts: z.array(UserRoleCountSchema),
+  userStatusCounts: z.array(UserStatusCountSchema),
+  seasonStatusCounts: z.array(SeasonStatusCountSchema),
+  riskySeasons: z.array(RiskySeasonSchema),
+  inventoryHealth: z.array(InventoryHealthSchema),
+});
+
+export type DashboardStatsSummary = z.infer<typeof DashboardStatsSummarySchema>;
+export type UserRoleCount = z.infer<typeof UserRoleCountSchema>;
+export type UserStatusCount = z.infer<typeof UserStatusCountSchema>;
+export type SeasonStatusCount = z.infer<typeof SeasonStatusCountSchema>;
+export type RiskySeason = z.infer<typeof RiskySeasonSchema>;
+export type InventoryHealth = z.infer<typeof InventoryHealthSchema>;
+export type DashboardStats = z.infer<typeof DashboardStatsSchema>;
+
+// Query keys for TanStack Query
+export const dashboardStatsKeys = {
+  all: ['admin', 'dashboard-stats'] as const,
+  stats: () => [...dashboardStatsKeys.all] as const,
+};
+
+export const adminDashboardStatsApi = {
+  /** GET /api/v1/admin/dashboard-stats - Get real-time dashboard statistics */
+  getStats: async (): Promise<DashboardStats> => {
+    const response = await httpClient.get('/api/v1/admin/dashboard-stats');
+    return parseApiResponse(response.data, DashboardStatsSchema);
+  },
+};
+
+// Legacy API (kept for compatibility)
 export const AdminDashboardSummarySchema = z.object({
   summary: z.object({
     totalUsers: z.number(),
@@ -256,7 +411,7 @@ export const AdminDashboardSummarySchema = z.object({
 export type AdminDashboardSummary = z.infer<typeof AdminDashboardSummarySchema>;
 
 export const adminDashboardApi = {
-  /** GET /api/v1/admin/dashboard/summary - Get admin dashboard summary */
+  /** GET /api/v1/admin/dashboard/summary - Get admin dashboard summary (legacy) */
   getSummary: async (): Promise<AdminDashboardSummary> => {
     const response = await httpClient.get('/api/v1/admin/dashboard/summary');
     return parseApiResponse(response.data, AdminDashboardSummarySchema);
@@ -279,6 +434,44 @@ export const AdminFarmSchema = z.object({
 
 export type AdminFarm = z.infer<typeof AdminFarmSchema>;
 
+export const AdminFarmDetailSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  provinceId: z.number().nullable(),
+  wardId: z.number().nullable(),
+  provinceName: z.string().nullable(),
+  wardName: z.string().nullable(),
+  area: z.number().nullable(),
+  active: z.boolean(),
+  ownerId: z.number().nullable(),
+  ownerUsername: z.string().nullable(),
+  ownerFullName: z.string().nullable(),
+});
+
+export type AdminFarmDetail = z.infer<typeof AdminFarmDetailSchema>;
+
+// Request schemas for admin farm operations
+export const AdminFarmUpdateRequestSchema = z.object({
+  name: z.string().min(1, 'Farm name is required'),
+  provinceId: z.number({ required_error: 'Province is required' }),
+  wardId: z.number({ required_error: 'Ward is required' }),
+  area: z.number().positive('Area must be positive'),
+  ownerId: z.number({ required_error: 'Owner is required' }),
+  active: z.boolean(),
+});
+
+export type AdminFarmUpdateRequest = z.infer<typeof AdminFarmUpdateRequestSchema>;
+
+export const AdminPlotCreateRequestSchema = z.object({
+  plotName: z.string().min(1, 'Plot name is required'),
+  area: z.number().positive().optional(),
+  soilType: z.string().optional(),
+  provinceId: z.number().optional(),
+  wardId: z.number().optional(),
+});
+
+export type AdminPlotCreateRequest = z.infer<typeof AdminPlotCreateRequestSchema>;
+
 export const adminFarmApi = {
   /** GET /api/v1/admin/farms - List all farms */
   list: async (params?: { keyword?: string; active?: boolean; page?: number; size?: number }) => {
@@ -287,9 +480,23 @@ export const adminFarmApi = {
   },
 
   /** GET /api/v1/admin/farms/{id} - Get farm detail */
-  getById: async (id: number) => {
+  getById: async (id: number): Promise<AdminFarmDetail> => {
     const response = await httpClient.get(`/api/v1/admin/farms/${id}`);
-    return parseApiResponse(response.data, AdminFarmSchema);
+    return parseApiResponse(response.data, AdminFarmDetailSchema);
+  },
+
+  /** PUT /api/v1/admin/farms/{id} - Update farm (cascades owner to plots) */
+  update: async (id: number, data: AdminFarmUpdateRequest): Promise<AdminFarmDetail> => {
+    const validatedPayload = AdminFarmUpdateRequestSchema.parse(data);
+    const response = await httpClient.put(`/api/v1/admin/farms/${id}`, validatedPayload);
+    return parseApiResponse(response.data, AdminFarmDetailSchema);
+  },
+
+  /** POST /api/v1/admin/farms/{id}/plots - Add plot to farm */
+  addPlot: async (farmId: number, data: AdminPlotCreateRequest) => {
+    const validatedPayload = AdminPlotCreateRequestSchema.parse(data);
+    const response = await httpClient.post(`/api/v1/admin/farms/${farmId}/plots`, validatedPayload);
+    return response.data;
   },
 };
 
@@ -297,9 +504,26 @@ export const adminFarmApi = {
 // ADMIN SEASONS API
 // ═══════════════════════════════════════════════════════════════
 
+// Season Update Request Schema
+export const AdminSeasonUpdateRequestSchema = z.object({
+  status: z.string().optional(),
+  endDate: z.string().optional(),
+  actualYieldKg: z.number().positive().optional(),
+  notes: z.string().optional(),
+});
+
+export type AdminSeasonUpdateRequest = z.infer<typeof AdminSeasonUpdateRequestSchema>;
+
 export const adminSeasonApi = {
-  /** GET /api/v1/admin/seasons - List all seasons */
-  list: async (params?: { status?: string; cropId?: number; plotId?: number; page?: number; size?: number }) => {
+  /** GET /api/v1/admin/seasons - List all seasons with filtering */
+  list: async (params?: {
+    farmId?: number;
+    status?: string;
+    cropId?: number;
+    plotId?: number;
+    page?: number;
+    size?: number
+  }) => {
     const response = await httpClient.get('/api/v1/admin/seasons', { params });
     return response.data;
   },
@@ -307,6 +531,19 @@ export const adminSeasonApi = {
   /** GET /api/v1/admin/seasons/{id} - Get season detail */
   getById: async (id: number) => {
     const response = await httpClient.get(`/api/v1/admin/seasons/${id}`);
+    return response.data;
+  },
+
+  /** GET /api/v1/admin/seasons/{id}/pending-task-count - Get count of non-DONE tasks */
+  getPendingTaskCount: async (id: number): Promise<number> => {
+    const response = await httpClient.get(`/api/v1/admin/seasons/${id}/pending-task-count`);
+    return response.data?.data ?? 0;
+  },
+
+  /** PUT /api/v1/admin/seasons/{id} - Update season (admin intervention) */
+  update: async (id: number, data: AdminSeasonUpdateRequest) => {
+    const validatedPayload = AdminSeasonUpdateRequestSchema.parse(data);
+    const response = await httpClient.put(`/api/v1/admin/seasons/${id}`, validatedPayload);
     return response.data;
   },
 };
@@ -328,7 +565,25 @@ export const adminIncidentApi = {
     return response.data;
   },
 
-  /** PATCH /api/v1/admin/incidents/{id}/status - Update incident status */
+  /** PATCH /api/v1/admin/incidents/{id}/triage - Triage incident (OPEN -> IN_PROGRESS) */
+  triage: async (id: number, data: { severity: string; deadline?: string; assigneeId?: number }) => {
+    const response = await httpClient.patch(`/api/v1/admin/incidents/${id}/triage`, data);
+    return response.data;
+  },
+
+  /** PATCH /api/v1/admin/incidents/{id}/resolve - Resolve incident (IN_PROGRESS -> RESOLVED) */
+  resolve: async (id: number, data: { resolutionNote: string }) => {
+    const response = await httpClient.patch(`/api/v1/admin/incidents/${id}/resolve`, data);
+    return response.data;
+  },
+
+  /** PATCH /api/v1/admin/incidents/{id}/cancel - Cancel incident (OPEN/IN_PROGRESS -> CANCELLED) */
+  cancel: async (id: number, data: { cancellationReason: string }) => {
+    const response = await httpClient.patch(`/api/v1/admin/incidents/${id}/cancel`, data);
+    return response.data;
+  },
+
+  /** PATCH /api/v1/admin/incidents/{id}/status - Update incident status (Legacy) */
   updateStatus: async (id: number, status: string) => {
     const response = await httpClient.patch(`/api/v1/admin/incidents/${id}/status`, { status });
     return response.data;
@@ -336,32 +591,191 @@ export const adminIncidentApi = {
 };
 
 // ═══════════════════════════════════════════════════════════════
-// ADMIN REPORTS API
+// ADMIN REPORTS API - SCHEMAS
+// ═══════════════════════════════════════════════════════════════
+
+// Flexible numeric parser for BigDecimal handling (can be string or number)
+const NumericSchema = z.union([
+  z.number(),
+  z.string().transform(val => parseFloat(val))
+]).nullable();
+
+// Legacy schemas (backward compatibility)
+export const MonthlyTotalSchema = z.object({
+  year: z.number(),
+  month: z.number(),
+  total: NumericSchema,
+});
+
+export const SeasonHarvestSchema = z.object({
+  seasonId: z.number(),
+  seasonName: z.string().nullable(),
+  cropName: z.string().nullable(),
+  totalQuantity: NumericSchema,
+});
+
+export const IncidentsSummarySchema = z.object({
+  bySeverity: z.record(z.string(), z.number()),
+  byStatus: z.record(z.string(), z.number()),
+  totalCount: z.number(),
+});
+
+export const MovementSummarySchema = z.object({
+  year: z.number(),
+  month: z.number(),
+  movementType: z.string().nullable(),
+  totalQuantity: NumericSchema,
+});
+
+// NEW Analytics Schemas
+export const YieldReportSchema = z.object({
+  seasonId: z.number(),
+  seasonName: z.string().nullable(),
+  cropName: z.string().nullable(),
+  plotName: z.string().nullable(),
+  farmName: z.string().nullable(),
+  expectedYieldKg: NumericSchema,
+  actualYieldKg: NumericSchema,
+  variancePercent: NumericSchema,
+});
+
+export const CostReportSchema = z.object({
+  seasonId: z.number(),
+  seasonName: z.string().nullable(),
+  cropName: z.string().nullable(),
+  totalExpense: NumericSchema,
+  totalYieldKg: NumericSchema,
+  costPerKg: NumericSchema,
+});
+
+export const RevenueReportSchema = z.object({
+  seasonId: z.number(),
+  seasonName: z.string().nullable(),
+  cropName: z.string().nullable(),
+  totalQuantity: NumericSchema,
+  totalRevenue: NumericSchema,
+  avgPricePerUnit: NumericSchema,
+});
+
+export const TaskPerformanceReportSchema = z.object({
+  totalTasks: z.number(),
+  completedTasks: z.number(),
+  overdueTasks: z.number(),
+  pendingTasks: z.number(),
+  inProgressTasks: z.number(),
+  cancelledTasks: z.number(),
+  completionRate: NumericSchema,
+  overdueRate: NumericSchema,
+});
+
+export const InventoryOnHandReportSchema = z.object({
+  warehouseId: z.number(),
+  warehouseName: z.string(),
+  farmName: z.string().nullable(),
+  totalLots: z.number(),
+  totalQuantityOnHand: NumericSchema,
+  expiredLots: z.number(),
+  expiringSoonLots: z.number(),
+});
+
+export const IncidentStatisticsReportSchema = z.object({
+  byIncidentType: z.record(z.string(), z.number()),
+  bySeverity: z.record(z.string(), z.number()),
+  byStatus: z.record(z.string(), z.number()),
+  totalCount: z.number(),
+  openCount: z.number(),
+  resolvedCount: z.number(),
+  averageResolutionDays: NumericSchema,
+});
+
+// Export types
+export type MonthlyTotal = z.infer<typeof MonthlyTotalSchema>;
+export type SeasonHarvest = z.infer<typeof SeasonHarvestSchema>;
+export type IncidentsSummary = z.infer<typeof IncidentsSummarySchema>;
+export type MovementSummary = z.infer<typeof MovementSummarySchema>;
+export type YieldReport = z.infer<typeof YieldReportSchema>;
+export type CostReport = z.infer<typeof CostReportSchema>;
+export type RevenueReport = z.infer<typeof RevenueReportSchema>;
+export type TaskPerformanceReport = z.infer<typeof TaskPerformanceReportSchema>;
+export type InventoryOnHandReport = z.infer<typeof InventoryOnHandReportSchema>;
+export type IncidentStatisticsReport = z.infer<typeof IncidentStatisticsReportSchema>;
+
+// Query keys for reports
+export const reportsKeys = {
+  all: ['admin', 'reports'] as const,
+  yield: (year?: number, cropId?: number) => [...reportsKeys.all, 'yield', { year, cropId }] as const,
+  cost: (year?: number) => [...reportsKeys.all, 'cost', year] as const,
+  revenue: (year?: number) => [...reportsKeys.all, 'revenue', year] as const,
+  taskPerformance: (year?: number) => [...reportsKeys.all, 'taskPerformance', year] as const,
+  inventoryOnHand: () => [...reportsKeys.all, 'inventoryOnHand'] as const,
+  incidentStatistics: (year?: number) => [...reportsKeys.all, 'incidentStatistics', year] as const,
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ADMIN REPORTS API - METHODS
 // ═══════════════════════════════════════════════════════════════
 
 export const adminReportsApi = {
+  // Legacy endpoints
   /** GET /api/v1/admin/reports/expenses-by-month */
-  getExpensesByMonth: async (year?: number) => {
+  getExpensesByMonth: async (year?: number): Promise<MonthlyTotal[]> => {
     const response = await httpClient.get('/api/v1/admin/reports/expenses-by-month', { params: { year } });
-    return response.data;
+    return parseApiResponse(response.data, z.array(MonthlyTotalSchema));
   },
 
   /** GET /api/v1/admin/reports/harvest-by-season */
-  getHarvestBySeason: async () => {
+  getHarvestBySeason: async (): Promise<SeasonHarvest[]> => {
     const response = await httpClient.get('/api/v1/admin/reports/harvest-by-season');
-    return response.data;
+    return parseApiResponse(response.data, z.array(SeasonHarvestSchema));
   },
 
   /** GET /api/v1/admin/reports/incidents-summary */
-  getIncidentsSummary: async () => {
+  getIncidentsSummary: async (): Promise<IncidentsSummary> => {
     const response = await httpClient.get('/api/v1/admin/reports/incidents-summary');
-    return response.data;
+    return parseApiResponse(response.data, IncidentsSummarySchema);
   },
 
   /** GET /api/v1/admin/reports/inventory-movements */
-  getInventoryMovements: async (year?: number) => {
+  getInventoryMovements: async (year?: number): Promise<MovementSummary[]> => {
     const response = await httpClient.get('/api/v1/admin/reports/inventory-movements', { params: { year } });
-    return response.data;
+    return parseApiResponse(response.data, z.array(MovementSummarySchema));
+  },
+
+  // NEW Analytics endpoints
+  /** GET /api/v1/admin/reports/yield - Yield report: expected vs actual */
+  getYieldReport: async (params?: { year?: number; cropId?: number }): Promise<YieldReport[]> => {
+    const response = await httpClient.get('/api/v1/admin/reports/yield', { params });
+    return parseApiResponse(response.data, z.array(YieldReportSchema));
+  },
+
+  /** GET /api/v1/admin/reports/cost - Cost report: expense per season with cost/kg */
+  getCostReport: async (year?: number): Promise<CostReport[]> => {
+    const response = await httpClient.get('/api/v1/admin/reports/cost', { params: { year } });
+    return parseApiResponse(response.data, z.array(CostReportSchema));
+  },
+
+  /** GET /api/v1/admin/reports/revenue - Revenue report: harvest quantity * price */
+  getRevenueReport: async (year?: number): Promise<RevenueReport[]> => {
+    const response = await httpClient.get('/api/v1/admin/reports/revenue', { params: { year } });
+    return parseApiResponse(response.data, z.array(RevenueReportSchema));
+  },
+
+  /** GET /api/v1/admin/reports/task-performance - Task completion and overdue rates */
+  getTaskPerformance: async (year?: number): Promise<TaskPerformanceReport> => {
+    const response = await httpClient.get('/api/v1/admin/reports/task-performance', { params: { year } });
+    return parseApiResponse(response.data, TaskPerformanceReportSchema);
+  },
+
+  /** GET /api/v1/admin/reports/inventory-onhand - Current stock by warehouse */
+  getInventoryOnHand: async (): Promise<InventoryOnHandReport[]> => {
+    const response = await httpClient.get('/api/v1/admin/reports/inventory-onhand');
+    return parseApiResponse(response.data, z.array(InventoryOnHandReportSchema));
+  },
+
+  /** GET /api/v1/admin/reports/incident-statistics - Incident breakdown with resolution metrics */
+  getIncidentStatistics: async (year?: number): Promise<IncidentStatisticsReport> => {
+    const response = await httpClient.get('/api/v1/admin/reports/incident-statistics', { params: { year } });
+    return parseApiResponse(response.data, IncidentStatisticsReportSchema);
   },
 };
 
@@ -387,6 +801,11 @@ export const adminCropApi = {
     const response = await httpClient.put(`/api/v1/admin/crops/${id}`, data);
     return response.data;
   },
+
+  /** DELETE /api/v1/admin/crops/{id} - Delete crop */
+  delete: async (id: number): Promise<void> => {
+    await httpClient.delete(`/api/v1/admin/crops/${id}`);
+  },
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -410,6 +829,11 @@ export const adminVarietyApi = {
   update: async (id: number, data: { name: string; cropId: number; description?: string }) => {
     const response = await httpClient.put(`/api/v1/admin/varieties/${id}`, data);
     return response.data;
+  },
+
+  /** DELETE /api/v1/admin/varieties/{id} - Delete variety */
+  delete: async (id: number): Promise<void> => {
+    await httpClient.delete(`/api/v1/admin/varieties/${id}`);
   },
 };
 
@@ -447,13 +871,88 @@ export const adminWarehouseApi = {
     const response = await httpClient.get('/api/v1/admin/warehouses/movements', { params });
     return response.data;
   },
+
+  /** POST /api/v1/admin/warehouses/movements - Record stock movement (IN/OUT/ADJUST) */
+  recordMovement: async (data: {
+    supplyLotId: number;
+    warehouseId: number;
+    locationId?: number;
+    movementType: 'IN' | 'OUT' | 'ADJUST';
+    quantity: number; // Can be negative for ADJUST
+    seasonId?: number;
+    note?: string;
+  }) => {
+    const response = await httpClient.post('/api/v1/admin/warehouses/movements', data);
+    return response.data;
+  },
+
+  /** GET /api/v1/admin/warehouses/lots/{lotId}/on-hand - Get current stock for a lot */
+  getOnHandQuantity: async (lotId: number, warehouseId: number, locationId?: number): Promise<number> => {
+    const response = await httpClient.get(`/api/v1/admin/warehouses/lots/${lotId}/on-hand`, {
+      params: { warehouseId, locationId }
+    });
+    return response.data?.result ?? 0;
+  },
 };
 
 // ═══════════════════════════════════════════════════════════════
 // ADMIN SUPPLIERS/SUPPLIES API
 // ═══════════════════════════════════════════════════════════════
 
+// Supplier Request Types
+export interface SupplierCreateRequest {
+  name: string;
+  licenseNo?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+}
+
+export interface SupplierUpdateRequest {
+  name: string;
+  licenseNo?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+}
+
+// Supply Item Request Types
+export interface SupplyItemCreateRequest {
+  name: string;
+  category?: string;
+  activeIngredient?: string;
+  unit?: string;
+  restrictedFlag?: boolean;
+  description?: string;
+}
+
+export interface SupplyItemUpdateRequest {
+  name: string;
+  category?: string;
+  activeIngredient?: string;
+  unit?: string;
+  restrictedFlag?: boolean;
+  description?: string;
+}
+
+// Supply Lot Request Types
+export interface SupplyLotCreateRequest {
+  supplyItemId: number;
+  supplierId?: number;
+  batchCode?: string;
+  expiryDate?: string;
+  status?: string;
+}
+
+export interface SupplyLotUpdateRequest {
+  supplyItemId: number;
+  supplierId?: number;
+  batchCode?: string;
+  expiryDate?: string;
+  status?: string;
+}
+
 export const adminSupplierApi = {
+  // ═══════════════ SUPPLIERS ═══════════════
+
   /** GET /api/v1/admin/suppliers - List all suppliers */
   list: async (params?: { keyword?: string; page?: number; size?: number }) => {
     const response = await httpClient.get('/api/v1/admin/suppliers', { params });
@@ -466,8 +965,27 @@ export const adminSupplierApi = {
     return response.data;
   },
 
+  /** POST /api/v1/admin/suppliers - Create supplier */
+  create: async (data: SupplierCreateRequest) => {
+    const response = await httpClient.post('/api/v1/admin/suppliers', data);
+    return response.data;
+  },
+
+  /** PUT /api/v1/admin/suppliers/{id} - Update supplier */
+  update: async (id: number, data: SupplierUpdateRequest) => {
+    const response = await httpClient.put(`/api/v1/admin/suppliers/${id}`, data);
+    return response.data;
+  },
+
+  /** DELETE /api/v1/admin/suppliers/{id} - Delete supplier */
+  delete: async (id: number): Promise<void> => {
+    await httpClient.delete(`/api/v1/admin/suppliers/${id}`);
+  },
+
+  // ═══════════════ SUPPLY ITEMS ═══════════════
+
   /** GET /api/v1/admin/suppliers/items - List all supply items */
-  listItems: async (params?: { keyword?: string; page?: number; size?: number }) => {
+  listItems: async (params?: { keyword?: string; category?: string; restricted?: boolean; page?: number; size?: number }) => {
     const response = await httpClient.get('/api/v1/admin/suppliers/items', { params });
     return response.data;
   },
@@ -478,8 +996,27 @@ export const adminSupplierApi = {
     return response.data;
   },
 
+  /** POST /api/v1/admin/suppliers/items - Create supply item */
+  createItem: async (data: SupplyItemCreateRequest) => {
+    const response = await httpClient.post('/api/v1/admin/suppliers/items', data);
+    return response.data;
+  },
+
+  /** PUT /api/v1/admin/suppliers/items/{id} - Update supply item */
+  updateItem: async (id: number, data: SupplyItemUpdateRequest) => {
+    const response = await httpClient.put(`/api/v1/admin/suppliers/items/${id}`, data);
+    return response.data;
+  },
+
+  /** DELETE /api/v1/admin/suppliers/items/{id} - Delete supply item */
+  deleteItem: async (id: number): Promise<void> => {
+    await httpClient.delete(`/api/v1/admin/suppliers/items/${id}`);
+  },
+
+  // ═══════════════ SUPPLY LOTS ═══════════════
+
   /** GET /api/v1/admin/suppliers/lots - List all supply lots */
-  listLots: async (params?: { supplierId?: number; status?: string; page?: number; size?: number }) => {
+  listLots: async (params?: { supplierId?: number; itemId?: number; status?: string; page?: number; size?: number }) => {
     const response = await httpClient.get('/api/v1/admin/suppliers/lots', { params });
     return response.data;
   },
@@ -489,15 +1026,54 @@ export const adminSupplierApi = {
     const response = await httpClient.get(`/api/v1/admin/suppliers/lots/${id}`);
     return response.data;
   },
+
+  /** POST /api/v1/admin/suppliers/lots - Create supply lot */
+  createLot: async (data: SupplyLotCreateRequest) => {
+    const response = await httpClient.post('/api/v1/admin/suppliers/lots', data);
+    return response.data;
+  },
+
+  /** PUT /api/v1/admin/suppliers/lots/{id} - Update supply lot */
+  updateLot: async (id: number, data: SupplyLotUpdateRequest) => {
+    const response = await httpClient.put(`/api/v1/admin/suppliers/lots/${id}`, data);
+    return response.data;
+  },
+
+  /** DELETE /api/v1/admin/suppliers/lots/{id} - Delete supply lot */
+  deleteLot: async (id: number): Promise<void> => {
+    await httpClient.delete(`/api/v1/admin/suppliers/lots/${id}`);
+  },
+
+  /** GET /api/v1/admin/suppliers/lots/{id}/movements - Get lot movements */
+  getLotMovements: async (id: number, params?: { page?: number; size?: number }) => {
+    const response = await httpClient.get(`/api/v1/admin/suppliers/lots/${id}/movements`, { params });
+    return response.data;
+  },
 };
 
 // ═══════════════════════════════════════════════════════════════
 // ADMIN TASKS API
 // ═══════════════════════════════════════════════════════════════
 
+// Task Update Request Schema
+export const AdminTaskUpdateRequestSchema = z.object({
+  status: z.string().optional(),
+  userId: z.number().optional(),
+  notes: z.string().optional(),
+});
+
+export type AdminTaskUpdateRequest = z.infer<typeof AdminTaskUpdateRequestSchema>;
+
 export const adminTaskApi = {
-  /** GET /api/v1/admin/tasks - List all tasks */
-  list: async (params?: { status?: string; seasonId?: number; page?: number; size?: number }) => {
+  /** GET /api/v1/admin/tasks - List all tasks with filtering */
+  list: async (params?: {
+    farmId?: number;
+    cropId?: number;
+    seasonId?: number;
+    status?: string;
+    page?: number;
+    size?: number
+  }) => {
     const response = await httpClient.get('/api/v1/admin/tasks', { params });
     return response.data;
   },
@@ -508,9 +1084,10 @@ export const adminTaskApi = {
     return response.data;
   },
 
-  /** PATCH /api/v1/admin/tasks/{id}/status - Update task status */
-  updateStatus: async (id: number, status: string) => {
-    const response = await httpClient.patch(`/api/v1/admin/tasks/${id}/status`, { status });
+  /** PUT /api/v1/admin/tasks/{id} - Update task (admin intervention) */
+  update: async (id: number, data: AdminTaskUpdateRequest) => {
+    const validatedPayload = AdminTaskUpdateRequestSchema.parse(data);
+    const response = await httpClient.put(`/api/v1/admin/tasks/${id}`, validatedPayload);
     return response.data;
   },
 };
@@ -540,10 +1117,10 @@ export const adminPlotApi = {
 };
 
 // ═══════════════════════════════════════════════════════════════
-// ADMIN USERS API (Extended)
+// ADMIN USERS LEGACY API (Farmer-specific endpoints)
 // ═══════════════════════════════════════════════════════════════
 
-export const adminUsersApi = {
+export const adminUsersLegacyApi = {
   /** GET /api/v1/admin/users/farmers - List all farmers */
   listFarmers: async (params?: { keyword?: string; status?: string; page?: number; size?: number }) => {
     const validatedParams = params ? AdminUserListParamsSchema.partial().parse(params) : undefined;

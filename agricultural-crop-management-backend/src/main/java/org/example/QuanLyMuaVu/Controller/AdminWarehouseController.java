@@ -4,10 +4,12 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.example.QuanLyMuaVu.DTO.Common.ApiResponse;
+import org.example.QuanLyMuaVu.DTO.Request.AdminRecordMovementRequest;
 import org.example.QuanLyMuaVu.DTO.Common.PageResponse;
 import org.example.QuanLyMuaVu.DTO.Response.StockLocationResponse;
 import org.example.QuanLyMuaVu.DTO.Response.StockMovementResponse;
@@ -21,11 +23,13 @@ import org.example.QuanLyMuaVu.Exception.ErrorCode;
 import org.example.QuanLyMuaVu.Repository.StockLocationRepository;
 import org.example.QuanLyMuaVu.Repository.StockMovementRepository;
 import org.example.QuanLyMuaVu.Repository.WarehouseRepository;
+import org.example.QuanLyMuaVu.Service.AdminInventoryService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -44,6 +48,7 @@ public class AdminWarehouseController {
         WarehouseRepository warehouseRepository;
         StockLocationRepository stockLocationRepository;
         StockMovementRepository stockMovementRepository;
+        AdminInventoryService adminInventoryService;
 
         @Operation(summary = "List all warehouses (Admin)", description = "Get paginated list of all warehouses across all farms")
         @ApiResponses({
@@ -127,6 +132,27 @@ public class AdminWarehouseController {
                                 .collect(Collectors.toList());
 
                 return ApiResponse.success(PageResponse.of(movementPage, content));
+        }
+
+        @Operation(summary = "Record stock movement (Admin)", description = "Record IN/OUT/ADJUST movement with atomic balance update")
+        @ApiResponses({
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Movement recorded successfully"),
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid request or insufficient stock"),
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Resource not found")
+        })
+        @PostMapping("/movements")
+        public ApiResponse<StockMovementResponse> recordMovement(
+                        @Valid @RequestBody AdminRecordMovementRequest request) {
+                return ApiResponse.success(adminInventoryService.recordMovement(request));
+        }
+
+        @Operation(summary = "Get on-hand quantity (Admin)", description = "Get current stock for a supply lot at a warehouse/location")
+        @GetMapping("/lots/{lotId}/on-hand")
+        public ApiResponse<BigDecimal> getOnHandQuantity(
+                        @PathVariable Integer lotId,
+                        @RequestParam Integer warehouseId,
+                        @RequestParam(required = false) Integer locationId) {
+                return ApiResponse.success(adminInventoryService.getOnHandQuantity(lotId, warehouseId, locationId));
         }
 
         private WarehouseResponse toWarehouseResponse(Warehouse w) {

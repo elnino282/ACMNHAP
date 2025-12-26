@@ -3,14 +3,15 @@ package org.example.QuanLyMuaVu.Mapper;
 import javax.annotation.processing.Generated;
 import org.example.QuanLyMuaVu.DTO.Request.FarmerCreationRequest;
 import org.example.QuanLyMuaVu.DTO.Request.FarmerUpdateRequest;
+import org.example.QuanLyMuaVu.DTO.Request.UserUpdateRequest;
 import org.example.QuanLyMuaVu.DTO.Response.FarmerResponse;
 import org.example.QuanLyMuaVu.Entity.User;
 import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2025-12-23T13:58:08+0700",
-    comments = "version: 1.5.5.Final, compiler: Eclipse JDT (IDE) 3.44.0.v20251118-1623, environment: Java 21.0.9 (Eclipse Adoptium)"
+    date = "2025-12-25T03:06:33+0700",
+    comments = "version: 1.5.5.Final, compiler: javac, environment: Java 17.0.17 (Microsoft)"
 )
 @Component
 public class FarmerMapperImpl implements FarmerMapper {
@@ -23,7 +24,9 @@ public class FarmerMapperImpl implements FarmerMapper {
 
         User.UserBuilder user = User.builder();
 
-        user.password( request.getPassword() );
+        user.email( request.getEmail() );
+        user.phone( request.getPhone() );
+        user.fullName( request.getFullName() );
         user.username( request.getUsername() );
 
         return user.build();
@@ -39,6 +42,12 @@ public class FarmerMapperImpl implements FarmerMapper {
 
         farmerResponse.id( user.getId() );
         farmerResponse.username( user.getUsername() );
+        farmerResponse.email( user.getEmail() );
+        farmerResponse.fullName( user.getFullName() );
+        farmerResponse.phone( user.getPhone() );
+        farmerResponse.roles( rolesToStringList( user.getRoles() ) );
+
+        farmerResponse.status( user.getStatus() != null ? user.getStatus().getCode() : null );
 
         return farmerResponse.build();
     }
@@ -48,7 +57,17 @@ public class FarmerMapperImpl implements FarmerMapper {
         if ( request == null ) {
             return;
         }
+    }
 
-        user.setPassword( request.getPassword() );
+    @Override
+    public void updateUserFromRequest(User user, UserUpdateRequest request) {
+        if ( request == null ) {
+            return;
+        }
+
+        user.setUsername( request.getUsername() );
+        user.setEmail( request.getEmail() );
+        user.setFullName( request.getFullName() );
+        user.setPhone( request.getPhone() );
     }
 }

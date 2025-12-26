@@ -69,4 +69,18 @@ public class AdminVarietyController {
             @Valid @RequestBody VarietyRequest request) {
         return ApiResponse.success(varietyService.update(id, request));
     }
+
+    @Operation(summary = "Delete variety", description = "Delete an existing variety. Fails if referenced in seasons.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Success"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthorized"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Not Found"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "Conflict - Variety is referenced in seasons")
+    })
+    @DeleteMapping("/{id}")
+    public ApiResponse<Void> deleteVariety(@PathVariable Integer id) {
+        varietyService.delete(id);
+        return ApiResponse.success(null);
+    }
 }

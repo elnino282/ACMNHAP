@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Calendar, CheckSquare, Search, RefreshCw, AlertCircle, Filter, ChevronRight, Play, CheckCircle } from 'lucide-react';
-import { adminSeasonApi, adminTaskApi } from '@/services/api.admin';
+import { Calendar, CheckSquare, Search, RefreshCw, AlertCircle, Filter, ChevronRight, Play, CheckCircle, Pencil, X } from 'lucide-react';
+import { adminSeasonApi, adminTaskApi, adminFarmApi, adminCropApi } from '@/services/api.admin';
+import { SeasonEditModal } from './components/SeasonEditModal';
+import { TaskEditModal } from './components/TaskEditModal';
 
 interface Season {
   id: number;
@@ -14,6 +16,8 @@ interface Season {
   startDate: string;
   endDate: string | null;
   expectedYield: number | null;
+  actualYieldKg: number | null;
+  notes: string | null;
 }
 
 interface Task {
@@ -21,11 +25,17 @@ interface Task {
   title: string;
   description: string | null;
   userName: string | null;
+  userId: number | null;
   seasonName: string | null;
   seasonId: number | null;
+  farmId: number | null;
+  farmName: string | null;
+  cropId: number | null;
+  cropName: string | null;
   plannedDate: string | null;
   dueDate: string | null;
   status: string;
+  notes: string | null;
   createdAt: string;
 }
 
@@ -59,25 +69,37 @@ export function SeasonsTasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
-  
+
   // Filters
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [taskStatusFilter, setTaskStatusFilter] = useState<string>('');
   const [seasonIdFilter, setSeasonIdFilter] = useState<number | null>(null);
-  
+  const [farmFilter, setFarmFilter] = useState<number | null>(null);
+  const [cropFilter, setCropFilter] = useState<number | null>(null);
+
+  // Filter options
+  const [farms, setFarms] = useState<any[]>([]);
+  const [crops, setCrops] = useState<any[]>([]);
+
   // Detail states
   const [selectedSeason, setSelectedSeason] = useState<SeasonDetail | null>(null);
   const [showSeasonDetail, setShowSeasonDetail] = useState(false);
+
+  // Edit modal states
+  const [editingSeason, setEditingSeason] = useState<Season | null>(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
   const fetchSeasons = async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await adminSeasonApi.list({ 
-        page, 
+      const response = await adminSeasonApi.list({
+        page,
         size: 20,
-        status: statusFilter || undefined
+        status: statusFilter || undefined,
+        farmId: farmFilter || undefined,
+        cropId: cropFilter || undefined
       });
       if (response?.result?.items) {
         setSeasons(response.result.items);
@@ -95,11 +117,13 @@ export function SeasonsTasksPage() {
     setLoading(true);
     setError(null);
     try {
-      const response = await adminTaskApi.list({ 
-        page, 
+      const response = await adminTaskApi.list({
+        page,
         size: 20,
         status: taskStatusFilter || undefined,
-        seasonId: seasonIdFilter || undefined
+        seasonId: seasonIdFilter || undefined,
+        farmId: farmFilter || undefined,
+        cropId: cropFilter || undefined
       });
       if (response?.result?.items) {
         setTasks(response.result.items);
@@ -119,7 +143,28 @@ export function SeasonsTasksPage() {
     } else {
       fetchTasks();
     }
-  }, [activeTab, page, statusFilter, taskStatusFilter, seasonIdFilter]);
+  }, [activeTab, page, statusFilter, taskStatusFilter, seasonIdFilter, farmFilter, cropFilter]);
+
+  // Fetch filter options on mount
+  useEffect(() => {
+    const loadFilterOptions = async () => {
+      try {
+        const [farmsRes, cropsRes] = await Promise.all([
+          adminFarmApi.list({ page: 0, size: 1000 }),
+          adminCropApi.list()
+        ]);
+        if (farmsRes?.result?.items) {
+          setFarms(farmsRes.result.items);
+        }
+        if (cropsRes?.result) {
+          setCrops(cropsRes.result);
+        }
+      } catch (err) {
+        console.error('Failed to load filter options:', err);
+      }
+    };
+    loadFilterOptions();
+  }, []);
 
   const handleViewSeason = async (season: Season) => {
     setSelectedSeason(season);
@@ -139,18 +184,56 @@ export function SeasonsTasksPage() {
 
   const handleUpdateTaskStatus = async (taskId: number, newStatus: string) => {
     try {
-      await adminTaskApi.updateStatus(taskId, newStatus);
+      await adminTaskApi.update(taskId, { status: newStatus });
       fetchTasks();
     } catch (err) {
       console.error('Failed to update task status:', err);
     }
   };
 
+  const resetSeasonFilters = () => {
+    setStatusFilter('');
+    setFarmFilter(null);
+    setCropFilter(null);
+    setPage(0);
+  };
+
+  const resetTaskFilters = () => {
+    setTaskStatusFilter('');
+    setSeasonIdFilter(null);
+    setFarmFilter(null);
+    setCropFilter(null);
+    setPage(0);
+  };
+
   const renderSeasons = () => (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Filter className="h-4 w-4 text-muted-foreground" />
+
+          <select
+            value={farmFilter || ''}
+            onChange={(e) => { setFarmFilter(e.target.value ? Number(e.target.value) : null); setPage(0); }}
+            className="px-3 py-2 border border-border rounded-lg bg-background text-sm"
+          >
+            <option value="">All Farms</option>
+            {farms.map((farm) => (
+              <option key={farm.id} value={farm.id}>{farm.name}</option>
+            ))}
+          </select>
+
+          <select
+            value={cropFilter || ''}
+            onChange={(e) => { setCropFilter(e.target.value ? Number(e.target.value) : null); setPage(0); }}
+            className="px-3 py-2 border border-border rounded-lg bg-background text-sm"
+          >
+            <option value="">All Crops</option>
+            {crops.map((crop) => (
+              <option key={crop.id} value={crop.id}>{crop.cropName}</option>
+            ))}
+          </select>
+
           <select
             value={statusFilter}
             onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
@@ -163,6 +246,16 @@ export function SeasonsTasksPage() {
             <option value="CANCELLED">Cancelled</option>
             <option value="ARCHIVED">Archived</option>
           </select>
+
+          {(statusFilter || farmFilter || cropFilter) && (
+            <button
+              onClick={resetSeasonFilters}
+              className="inline-flex items-center gap-1 px-3 py-2 text-sm text-muted-foreground hover:text-foreground border border-border rounded-lg hover:bg-muted/50"
+            >
+              <X className="h-3 w-3" />
+              Reset
+            </button>
+          )}
         </div>
         <button
           onClick={fetchSeasons}
@@ -232,9 +325,8 @@ export function SeasonsTasksPage() {
                     {season.farmName && <span className="text-xs"> ({season.farmName})</span>}
                   </td>
                   <td className="px-4 py-3 text-sm">
-                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
-                      STATUS_COLORS[season.status] || 'bg-gray-100 text-gray-800'
-                    }`}>
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${STATUS_COLORS[season.status] || 'bg-gray-100 text-gray-800'
+                      }`}>
                       {season.status}
                     </span>
                   </td>
@@ -243,12 +335,20 @@ export function SeasonsTasksPage() {
                     {season.endDate && ` - ${new Date(season.endDate).toLocaleDateString()}`}
                   </td>
                   <td className="px-4 py-3">
-                    <button 
-                      onClick={() => handleViewSeason(season)}
-                      className="text-sm text-primary hover:underline inline-flex items-center gap-1"
-                    >
-                      View Details <ChevronRight className="h-4 w-4" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleViewSeason(season)}
+                        className="text-sm text-primary hover:underline inline-flex items-center gap-1"
+                      >
+                        View <ChevronRight className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => setEditingSeason(season)}
+                        className="text-sm text-amber-600 hover:underline inline-flex items-center gap-1"
+                      >
+                        <Pencil className="h-3 w-3" /> Edit
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -283,9 +383,32 @@ export function SeasonsTasksPage() {
 
   const renderTasks = () => (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Filter className="h-4 w-4 text-muted-foreground" />
+
+          <select
+            value={farmFilter || ''}
+            onChange={(e) => { setFarmFilter(e.target.value ? Number(e.target.value) : null); setPage(0); }}
+            className="px-3 py-2 border border-border rounded-lg bg-background text-sm"
+          >
+            <option value="">All Farms</option>
+            {farms.map((farm) => (
+              <option key={farm.id} value={farm.id}>{farm.name}</option>
+            ))}
+          </select>
+
+          <select
+            value={cropFilter || ''}
+            onChange={(e) => { setCropFilter(e.target.value ? Number(e.target.value) : null); setPage(0); }}
+            className="px-3 py-2 border border-border rounded-lg bg-background text-sm"
+          >
+            <option value="">All Crops</option>
+            {crops.map((crop) => (
+              <option key={crop.id} value={crop.id}>{crop.cropName}</option>
+            ))}
+          </select>
+
           <select
             value={taskStatusFilter}
             onChange={(e) => { setTaskStatusFilter(e.target.value); setPage(0); }}
@@ -297,6 +420,16 @@ export function SeasonsTasksPage() {
             <option value="COMPLETED">Completed</option>
             <option value="CANCELLED">Cancelled</option>
           </select>
+
+          {(taskStatusFilter || farmFilter || cropFilter) && (
+            <button
+              onClick={resetTaskFilters}
+              className="inline-flex items-center gap-1 px-3 py-2 text-sm text-muted-foreground hover:text-foreground border border-border rounded-lg hover:bg-muted/50"
+            >
+              <X className="h-3 w-3" />
+              Reset
+            </button>
+          )}
         </div>
         <button
           onClick={fetchTasks}
@@ -360,9 +493,8 @@ export function SeasonsTasksPage() {
                   <td className="px-4 py-3 text-sm">{task.userName || '-'}</td>
                   <td className="px-4 py-3 text-sm">{task.seasonName || '-'}</td>
                   <td className="px-4 py-3 text-sm">
-                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
-                      TASK_STATUS_COLORS[task.status] || 'bg-gray-100 text-gray-800'
-                    }`}>
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${TASK_STATUS_COLORS[task.status] || 'bg-gray-100 text-gray-800'
+                      }`}>
                       {task.status}
                     </span>
                   </td>
@@ -389,6 +521,13 @@ export function SeasonsTasksPage() {
                           Complete
                         </button>
                       )}
+                      <button
+                        onClick={() => setEditingTask(task)}
+                        className="text-xs px-2 py-1 bg-amber-100 text-amber-800 rounded hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-400 inline-flex items-center gap-1"
+                      >
+                        <Pencil className="h-3 w-3" />
+                        Edit
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -433,22 +572,20 @@ export function SeasonsTasksPage() {
       <div className="flex border-b border-border mb-6">
         <button
           onClick={() => { setActiveTab('seasons'); setPage(0); }}
-          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
-            activeTab === 'seasons'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${activeTab === 'seasons'
+            ? 'border-primary text-primary'
+            : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
         >
           <Calendar className="inline-block h-4 w-4 mr-2" />
           Seasons
         </button>
         <button
           onClick={() => { setActiveTab('tasks'); setPage(0); }}
-          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
-            activeTab === 'tasks'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${activeTab === 'tasks'
+            ? 'border-primary text-primary'
+            : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
         >
           <CheckSquare className="inline-block h-4 w-4 mr-2" />
           Tasks
@@ -466,14 +603,14 @@ export function SeasonsTasksPage() {
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-semibold">Season Details</h2>
-                <button 
+                <button
                   onClick={() => setShowSeasonDetail(false)}
                   className="p-2 hover:bg-muted rounded"
                 >
                   ✕
                 </button>
               </div>
-              
+
               {detailLoading ? (
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <RefreshCw className="h-4 w-4 animate-spin" />
@@ -489,9 +626,8 @@ export function SeasonsTasksPage() {
                     <div>
                       <label className="text-sm font-medium text-muted-foreground">Status</label>
                       <p className="text-sm">
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
-                          STATUS_COLORS[selectedSeason.status] || 'bg-gray-100 text-gray-800'
-                        }`}>
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${STATUS_COLORS[selectedSeason.status] || 'bg-gray-100 text-gray-800'
+                          }`}>
                           {selectedSeason.status}
                         </span>
                       </p>
@@ -565,6 +701,33 @@ export function SeasonsTasksPage() {
           </div>
         </div>
       )}
+
+      {/* Season Edit Modal */}
+      {editingSeason && (
+        <SeasonEditModal
+          season={editingSeason}
+          open={!!editingSeason}
+          onClose={() => setEditingSeason(null)}
+          onSuccess={() => {
+            fetchSeasons();
+            setEditingSeason(null);
+          }}
+        />
+      )}
+
+      {/* Task Edit Modal */}
+      {editingTask && (
+        <TaskEditModal
+          task={editingTask}
+          open={!!editingTask}
+          onClose={() => setEditingTask(null)}
+          onSuccess={() => {
+            fetchTasks();
+            setEditingTask(null);
+          }}
+        />
+      )}
     </div>
   );
 }
+

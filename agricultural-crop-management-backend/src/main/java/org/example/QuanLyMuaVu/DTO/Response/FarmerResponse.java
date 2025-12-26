@@ -18,6 +18,9 @@ public class FarmerResponse {
 
     Long id;
     String username;
+    String email;
+    String fullName;
+    String phone;
     String status;
     List<String> roles;
 }

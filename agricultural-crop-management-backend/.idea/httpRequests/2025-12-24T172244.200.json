@@ -1,0 +1,13 @@
+{
+  "status": 200,
+  "code": "SUCCESS",
+  "message": "OK",
+  "result": {
+    "token": "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhZG1pbiIsInNjb3BlIjoiUk9MRV9BRE1JTiIsImlzcyI6IlF1YW5MeU11YVZ1IiwiZXhwIjoxNzY2NTc1MzY0LCJpYXQiOjE3NjY1NzE3NjQsImp0aSI6ImJjOGM3YTQyLTFiYzMtNDAwYi04MThlLTk2ODgyYTUxZTVlOSJ9.Ho2AovpA8vz3LfJiJlE3AGbogtSTosjAawoOCfvdKztny8hBeUtuoHhegPtA9eBeqSf5drsIO5XjGpfqIiFgAg",
+    "authenticated": true,
+    "username": "admin",
+    "roles": [
+      "ADMIN"
+    ]
+  }
+}

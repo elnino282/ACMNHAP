@@ -65,4 +65,18 @@ public class AdminCropController {
             @Valid @RequestBody CropRequest request) {
         return ApiResponse.success(cropService.update(id, request));
     }
+
+    @Operation(summary = "Delete crop", description = "Delete an existing crop. Fails if crop has varieties or is referenced in seasons.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Success"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthorized"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Not Found"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "Conflict - Crop has varieties or is referenced in seasons")
+    })
+    @DeleteMapping("/{id}")
+    public ApiResponse<Void> deleteCrop(@PathVariable Integer id) {
+        cropService.delete(id);
+        return ApiResponse.success(null);
+    }
 }
