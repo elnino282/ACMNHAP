@@ -655,6 +655,8 @@ const NullableRatioSchema = z.preprocess(
 // Report filter params for API calls
 export interface ReportFilterParams {
   year?: number;
+  fromDate?: string;  // YYYY-MM-DD format
+  toDate?: string;    // YYYY-MM-DD format
   cropId?: number;
   farmId?: number;
   plotId?: number;

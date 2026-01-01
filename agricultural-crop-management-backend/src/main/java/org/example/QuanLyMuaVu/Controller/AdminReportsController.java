@@ -90,11 +90,19 @@ public class AdminReportsController {
         @GetMapping("/yield")
         public ApiResponse<List<AdminReportResponse.YieldReport>> getYieldReport(
                         @Parameter(description = "Year to filter by season start date") @RequestParam(value = "year", required = false) Integer year,
+                        @Parameter(description = "From date (YYYY-MM-DD)") @RequestParam(value = "fromDate", required = false) String fromDateStr,
+                        @Parameter(description = "To date (YYYY-MM-DD)") @RequestParam(value = "toDate", required = false) String toDateStr,
                         @Parameter(description = "Crop ID filter") @RequestParam(value = "cropId", required = false) Integer cropId,
                         @Parameter(description = "Farm ID filter") @RequestParam(value = "farmId", required = false) Integer farmId,
                         @Parameter(description = "Plot ID filter") @RequestParam(value = "plotId", required = false) Integer plotId) {
                 var filter = AdminReportFilter.builder()
-                                .year(year).cropId(cropId).farmId(farmId).plotId(plotId)
+                                .year(year)
+                                .fromDate(fromDateStr != null && !fromDateStr.isEmpty()
+                                                ? java.time.LocalDate.parse(fromDateStr)
+                                                : null)
+                                .toDate(toDateStr != null && !toDateStr.isEmpty() ? java.time.LocalDate.parse(toDateStr)
+                                                : null)
+                                .cropId(cropId).farmId(farmId).plotId(plotId)
                                 .build();
                 return ApiResponse.success(adminReportsService.getYieldReport(filter));
         }
@@ -108,11 +116,19 @@ public class AdminReportsController {
         @GetMapping("/cost")
         public ApiResponse<List<AdminReportResponse.CostReport>> getCostReport(
                         @Parameter(description = "Year to filter by season start date") @RequestParam(value = "year", required = false) Integer year,
+                        @Parameter(description = "From date (YYYY-MM-DD)") @RequestParam(value = "fromDate", required = false) String fromDateStr,
+                        @Parameter(description = "To date (YYYY-MM-DD)") @RequestParam(value = "toDate", required = false) String toDateStr,
                         @Parameter(description = "Crop ID filter") @RequestParam(value = "cropId", required = false) Integer cropId,
                         @Parameter(description = "Farm ID filter") @RequestParam(value = "farmId", required = false) Integer farmId,
                         @Parameter(description = "Plot ID filter") @RequestParam(value = "plotId", required = false) Integer plotId) {
                 var filter = AdminReportFilter.builder()
-                                .year(year).cropId(cropId).farmId(farmId).plotId(plotId)
+                                .year(year)
+                                .fromDate(fromDateStr != null && !fromDateStr.isEmpty()
+                                                ? java.time.LocalDate.parse(fromDateStr)
+                                                : null)
+                                .toDate(toDateStr != null && !toDateStr.isEmpty() ? java.time.LocalDate.parse(toDateStr)
+                                                : null)
+                                .cropId(cropId).farmId(farmId).plotId(plotId)
                                 .build();
                 return ApiResponse.success(adminReportsService.getCostReport(filter));
         }
@@ -126,11 +142,19 @@ public class AdminReportsController {
         @GetMapping("/revenue")
         public ApiResponse<List<AdminReportResponse.RevenueReport>> getRevenueReport(
                         @Parameter(description = "Year to filter by season start date") @RequestParam(value = "year", required = false) Integer year,
+                        @Parameter(description = "From date (YYYY-MM-DD)") @RequestParam(value = "fromDate", required = false) String fromDateStr,
+                        @Parameter(description = "To date (YYYY-MM-DD)") @RequestParam(value = "toDate", required = false) String toDateStr,
                         @Parameter(description = "Crop ID filter") @RequestParam(value = "cropId", required = false) Integer cropId,
                         @Parameter(description = "Farm ID filter") @RequestParam(value = "farmId", required = false) Integer farmId,
                         @Parameter(description = "Plot ID filter") @RequestParam(value = "plotId", required = false) Integer plotId) {
                 var filter = AdminReportFilter.builder()
-                                .year(year).cropId(cropId).farmId(farmId).plotId(plotId)
+                                .year(year)
+                                .fromDate(fromDateStr != null && !fromDateStr.isEmpty()
+                                                ? java.time.LocalDate.parse(fromDateStr)
+                                                : null)
+                                .toDate(toDateStr != null && !toDateStr.isEmpty() ? java.time.LocalDate.parse(toDateStr)
+                                                : null)
+                                .cropId(cropId).farmId(farmId).plotId(plotId)
                                 .build();
                 return ApiResponse.success(adminReportsService.getRevenueReport(filter));
         }
@@ -144,11 +168,19 @@ public class AdminReportsController {
         @GetMapping("/profit")
         public ApiResponse<List<AdminReportResponse.ProfitReport>> getProfitReport(
                         @Parameter(description = "Year to filter by season start date") @RequestParam(value = "year", required = false) Integer year,
+                        @Parameter(description = "From date (YYYY-MM-DD)") @RequestParam(value = "fromDate", required = false) String fromDateStr,
+                        @Parameter(description = "To date (YYYY-MM-DD)") @RequestParam(value = "toDate", required = false) String toDateStr,
                         @Parameter(description = "Crop ID filter") @RequestParam(value = "cropId", required = false) Integer cropId,
                         @Parameter(description = "Farm ID filter") @RequestParam(value = "farmId", required = false) Integer farmId,
                         @Parameter(description = "Plot ID filter") @RequestParam(value = "plotId", required = false) Integer plotId) {
                 var filter = AdminReportFilter.builder()
-                                .year(year).cropId(cropId).farmId(farmId).plotId(plotId)
+                                .year(year)
+                                .fromDate(fromDateStr != null && !fromDateStr.isEmpty()
+                                                ? java.time.LocalDate.parse(fromDateStr)
+                                                : null)
+                                .toDate(toDateStr != null && !toDateStr.isEmpty() ? java.time.LocalDate.parse(toDateStr)
+                                                : null)
+                                .cropId(cropId).farmId(farmId).plotId(plotId)
                                 .build();
                 return ApiResponse.success(adminReportsService.getProfitReport(filter));
         }

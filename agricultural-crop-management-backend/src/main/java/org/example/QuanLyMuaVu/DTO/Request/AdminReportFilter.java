@@ -38,26 +38,30 @@ public class AdminReportFilter {
     /**
      * Get effective start date for query.
      * Uses fromDate if set, otherwise computes from year.
-     * Defaults to current year if neither is set.
+     * Returns null if neither is set (no date filtering).
      */
     public LocalDate getEffectiveFromDate() {
         if (fromDate != null) {
             return fromDate;
         }
-        int y = year != null ? year : LocalDate.now().getYear();
-        return LocalDate.of(y, 1, 1);
+        if (year != null) {
+            return LocalDate.of(year, 1, 1);
+        }
+        return null; // No date filtering when year is not specified
     }
 
     /**
      * Get effective end date for query (exclusive).
      * Uses toDate if set, otherwise computes from year.
-     * Defaults to next year start if neither is set.
+     * Returns null if neither is set (no date filtering).
      */
     public LocalDate getEffectiveToDate() {
         if (toDate != null) {
             return toDate;
         }
-        int y = year != null ? year : LocalDate.now().getYear();
-        return LocalDate.of(y + 1, 1, 1);
+        if (year != null) {
+            return LocalDate.of(year + 1, 1, 1);
+        }
+        return null; // No date filtering when year is not specified
     }
 }

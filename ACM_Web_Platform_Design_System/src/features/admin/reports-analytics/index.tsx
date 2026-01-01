@@ -32,9 +32,10 @@ const DEFAULT_FILTERS: ReportFilters = {
     farmerId: 'all',
 };
 
-// Convert UI filters to API params (removes 'all', only sends numbers)
-const toApiParams = (ui: ReportFilters, year: number): ReportFilterParams => ({
-    year,
+// Convert UI filters to API params (removes 'all', only sends valid values)
+const toApiParams = (ui: ReportFilters): ReportFilterParams => ({
+    ...(ui.fromDate && { fromDate: ui.fromDate }),
+    ...(ui.toDate && { toDate: ui.toDate }),
     ...(ui.cropId !== 'all' && { cropId: parseInt(ui.cropId) }),
     ...(ui.farmId !== 'all' && { farmId: parseInt(ui.farmId) }),
     ...(ui.plotId !== 'all' && { plotId: parseInt(ui.plotId) }),
@@ -46,11 +47,8 @@ export const ReportsAnalytics: React.FC = () => {
     const [appliedFilters, setAppliedFilters] = useState<ReportFilters>(DEFAULT_FILTERS);
     const [activeTab, setActiveTab] = useState<'yield' | 'cost' | 'revenue' | 'profit'>('yield');
 
-    // Get current year for default queries
-    const currentYear = new Date().getFullYear();
-
     // Build API params from applied filters (only applied, not draft)
-    const apiParams = useMemo(() => toApiParams(appliedFilters, currentYear), [appliedFilters, currentYear]);
+    const apiParams = useMemo(() => toApiParams(appliedFilters), [appliedFilters]);
 
     // ═══════════════════════════════════════════════════════════════
     // DROPDOWN DATA QUERIES
@@ -63,9 +61,9 @@ export const ReportsAnalytics: React.FC = () => {
     });
 
     const { data: plotsData } = useQuery({
-        queryKey: ['adminPlots', appliedFilters.farmId],
+        queryKey: ['adminPlots', filters.farmId],
         queryFn: () => adminPlotApi.list({
-            farmId: appliedFilters.farmId !== 'all' ? parseInt(appliedFilters.farmId) : undefined
+            farmId: filters.farmId !== 'all' ? parseInt(filters.farmId) : undefined
         }),
         staleTime: 1000 * 60 * 10,
     });
@@ -319,7 +317,6 @@ export const ReportsAnalytics: React.FC = () => {
                 plots={plotOptions}
                 crops={cropOptions}
                 isPlotDisabled={filters.farmId === 'all'}
-                isSeasonDisabled={filters.plotId === 'all'}
             />
 
             {/* Summary Cards */}
