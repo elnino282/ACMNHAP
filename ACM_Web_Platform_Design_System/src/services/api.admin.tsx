@@ -632,11 +632,33 @@ export const adminIncidentApi = {
 // ADMIN REPORTS API - SCHEMAS
 // ═══════════════════════════════════════════════════════════════
 
-// Flexible numeric parser for BigDecimal handling (can be string or number)
-const NumericSchema = z.union([
-  z.number(),
-  z.string().transform(val => parseFloat(val))
-]).nullable();
+// Runtime-safe numeric: coerce BigDecimal/string to number, NaN → 0
+const NumericSchema = z.preprocess(
+  (val) => {
+    if (val === null || val === undefined) return 0;
+    const num = typeof val === 'string' ? parseFloat(val) : val;
+    return Number.isFinite(num) ? num : 0;
+  },
+  z.number()
+);
+
+// Nullable ratio: for percentages like profitMargin, costPerKg, variancePercent. NaN → null
+const NullableRatioSchema = z.preprocess(
+  (val) => {
+    if (val === null || val === undefined) return null;
+    const num = typeof val === 'string' ? parseFloat(val) : val;
+    return Number.isFinite(num) ? num : null;
+  },
+  z.number().nullable()
+);
+
+// Report filter params for API calls
+export interface ReportFilterParams {
+  year?: number;
+  cropId?: number;
+  farmId?: number;
+  plotId?: number;
+}
 
 // Legacy schemas (backward compatibility)
 export const MonthlyTotalSchema = z.object({
@@ -674,7 +696,7 @@ export const YieldReportSchema = z.object({
   farmName: z.string().nullable(),
   expectedYieldKg: NumericSchema,
   actualYieldKg: NumericSchema,
-  variancePercent: NumericSchema,
+  variancePercent: NullableRatioSchema,
 });
 
 export const CostReportSchema = z.object({
@@ -683,7 +705,7 @@ export const CostReportSchema = z.object({
   cropName: z.string().nullable(),
   totalExpense: NumericSchema,
   totalYieldKg: NumericSchema,
-  costPerKg: NumericSchema,
+  costPerKg: NullableRatioSchema,
 });
 
 export const RevenueReportSchema = z.object({
@@ -692,7 +714,19 @@ export const RevenueReportSchema = z.object({
   cropName: z.string().nullable(),
   totalQuantity: NumericSchema,
   totalRevenue: NumericSchema,
-  avgPricePerUnit: NumericSchema,
+  avgPricePerUnit: NullableRatioSchema,
+});
+
+export const ProfitReportSchema = z.object({
+  seasonId: z.number(),
+  seasonName: z.string().nullable(),
+  cropName: z.string().nullable(),
+  farmName: z.string().nullable(),
+  totalRevenue: NumericSchema,
+  totalExpense: NumericSchema,
+  grossProfit: NumericSchema,
+  profitMargin: NullableRatioSchema,
+  returnOnCost: NullableRatioSchema,
 });
 
 export const TaskPerformanceReportSchema = z.object({
@@ -734,16 +768,26 @@ export type MovementSummary = z.infer<typeof MovementSummarySchema>;
 export type YieldReport = z.infer<typeof YieldReportSchema>;
 export type CostReport = z.infer<typeof CostReportSchema>;
 export type RevenueReport = z.infer<typeof RevenueReportSchema>;
+export type ProfitReport = z.infer<typeof ProfitReportSchema>;
 export type TaskPerformanceReport = z.infer<typeof TaskPerformanceReportSchema>;
 export type InventoryOnHandReport = z.infer<typeof InventoryOnHandReportSchema>;
 export type IncidentStatisticsReport = z.infer<typeof IncidentStatisticsReportSchema>;
 
+// Helper: normalize params for stable query keys (remove undefined, fixed order)
+const normalizeReportParams = (p?: ReportFilterParams) => ({
+  ...(p?.year !== undefined && { year: p.year }),
+  ...(p?.cropId !== undefined && { cropId: p.cropId }),
+  ...(p?.farmId !== undefined && { farmId: p.farmId }),
+  ...(p?.plotId !== undefined && { plotId: p.plotId }),
+});
+
 // Query keys for reports
 export const reportsKeys = {
-  all: ['admin', 'reports'] as const,
-  yield: (year?: number, cropId?: number) => [...reportsKeys.all, 'yield', { year, cropId }] as const,
-  cost: (year?: number) => [...reportsKeys.all, 'cost', year] as const,
-  revenue: (year?: number) => [...reportsKeys.all, 'revenue', year] as const,
+  all: ['adminReports'] as const,
+  yield: (p?: ReportFilterParams) => [...reportsKeys.all, 'yield', normalizeReportParams(p)] as const,
+  cost: (p?: ReportFilterParams) => [...reportsKeys.all, 'cost', normalizeReportParams(p)] as const,
+  revenue: (p?: ReportFilterParams) => [...reportsKeys.all, 'revenue', normalizeReportParams(p)] as const,
+  profit: (p?: ReportFilterParams) => [...reportsKeys.all, 'profit', normalizeReportParams(p)] as const,
   taskPerformance: (year?: number) => [...reportsKeys.all, 'taskPerformance', year] as const,
   inventoryOnHand: () => [...reportsKeys.all, 'inventoryOnHand'] as const,
   incidentStatistics: (year?: number) => [...reportsKeys.all, 'incidentStatistics', year] as const,
@@ -779,23 +823,29 @@ export const adminReportsApi = {
     return parseApiResponse(response.data, z.array(MovementSummarySchema));
   },
 
-  // NEW Analytics endpoints
+  // NEW Analytics endpoints (all accept ReportFilterParams)
   /** GET /api/v1/admin/reports/yield - Yield report: expected vs actual */
-  getYieldReport: async (params?: { year?: number; cropId?: number }): Promise<YieldReport[]> => {
+  getYieldReport: async (params?: ReportFilterParams): Promise<YieldReport[]> => {
     const response = await httpClient.get('/api/v1/admin/reports/yield', { params });
     return parseApiResponse(response.data, z.array(YieldReportSchema));
   },
 
   /** GET /api/v1/admin/reports/cost - Cost report: expense per season with cost/kg */
-  getCostReport: async (year?: number): Promise<CostReport[]> => {
-    const response = await httpClient.get('/api/v1/admin/reports/cost', { params: { year } });
+  getCostReport: async (params?: ReportFilterParams): Promise<CostReport[]> => {
+    const response = await httpClient.get('/api/v1/admin/reports/cost', { params });
     return parseApiResponse(response.data, z.array(CostReportSchema));
   },
 
   /** GET /api/v1/admin/reports/revenue - Revenue report: harvest quantity * price */
-  getRevenueReport: async (year?: number): Promise<RevenueReport[]> => {
-    const response = await httpClient.get('/api/v1/admin/reports/revenue', { params: { year } });
+  getRevenueReport: async (params?: ReportFilterParams): Promise<RevenueReport[]> => {
+    const response = await httpClient.get('/api/v1/admin/reports/revenue', { params });
     return parseApiResponse(response.data, z.array(RevenueReportSchema));
+  },
+
+  /** GET /api/v1/admin/reports/profit - Profit report: revenue vs expense with margins */
+  getProfitReport: async (params?: ReportFilterParams): Promise<ProfitReport[]> => {
+    const response = await httpClient.get('/api/v1/admin/reports/profit', { params });
+    return parseApiResponse(response.data, z.array(ProfitReportSchema));
   },
 
   /** GET /api/v1/admin/reports/task-performance - Task completion and overdue rates */

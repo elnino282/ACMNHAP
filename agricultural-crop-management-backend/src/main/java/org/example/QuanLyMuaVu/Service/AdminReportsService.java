@@ -4,6 +4,8 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.example.QuanLyMuaVu.DTO.Request.AdminReportFilter;
+import org.example.QuanLyMuaVu.DTO.Response.AdminReportProjections;
 import org.example.QuanLyMuaVu.DTO.Response.AdminReportResponse;
 import org.example.QuanLyMuaVu.Entity.*;
 import org.example.QuanLyMuaVu.Enums.IncidentStatus;
@@ -151,49 +153,54 @@ public class AdminReportsService {
         }
 
         // ═══════════════════════════════════════════════════════════════
-        // NEW ANALYTICS METHODS
+        // NEW ANALYTICS METHODS (Optimized with JPQL queries)
         // ═══════════════════════════════════════════════════════════════
 
         /**
          * Yield Report: Expected vs Actual yield by season/crop/plot.
-         * Filter by year (season.start_date) and optionally by cropId.
+         * Uses optimized date range query with optional filters.
          */
-        public List<AdminReportResponse.YieldReport> getYieldReport(Integer year, Integer cropId) {
-                log.info("Generating yield report for year: {}, cropId: {}", year, cropId);
+        public List<AdminReportResponse.YieldReport> getYieldReport(AdminReportFilter filter) {
+                log.info("Generating yield report with filter: {}", filter);
 
                 try {
-                        int targetYear = year != null ? year : LocalDate.now().getYear();
+                        LocalDate from = filter.getEffectiveFromDate();
+                        LocalDate to = filter.getEffectiveToDate();
 
-                        // Get all seasons, filter by year and cropId
-                        var seasons = seasonRepository.findAll().stream()
-                                        .filter(s -> s.getStartDate() != null
-                                                        && s.getStartDate().getYear() == targetYear)
-                                        .filter(s -> cropId == null
-                                                        || (s.getCrop() != null && s.getCrop().getId().equals(cropId)))
-                                        .collect(Collectors.toList());
+                        // Step 1: Get seasons with optimized query (index-friendly date range)
+                        var seasons = seasonRepository.findByFilters(
+                                        from, to, filter.getCropId(), filter.getFarmId(), filter.getPlotId());
 
-                        // Get all harvests and group by seasonId
-                        Map<Integer, BigDecimal> harvestBySeasonId = harvestRepository.findAll().stream()
-                                        .filter(h -> h.getSeason() != null)
-                                        .collect(Collectors.groupingBy(
-                                                        h -> h.getSeason().getId(),
-                                                        Collectors.reducing(BigDecimal.ZERO,
-                                                                        h -> h.getQuantity() != null ? h.getQuantity()
-                                                                                        : BigDecimal.ZERO,
-                                                                        BigDecimal::add)));
+                        if (seasons.isEmpty()) {
+                                return Collections.emptyList();
+                        }
 
+                        // Step 2: Collect season IDs
+                        Set<Integer> seasonIds = seasons.stream()
+                                        .map(Season::getId)
+                                        .collect(Collectors.toSet());
+
+                        // Step 3: Get harvest aggregates via projection (type-safe)
+                        Map<Integer, BigDecimal> harvestBySeasonId = harvestRepository
+                                        .sumQuantityBySeasonIds(seasonIds).stream()
+                                        .collect(Collectors.toMap(
+                                                        AdminReportProjections.SeasonHarvestAgg::getSeasonId,
+                                                        AdminReportProjections.SeasonHarvestAgg::getTotalQuantity));
+
+                        // Step 4: Assemble DTOs
                         return seasons.stream()
                                         .map(season -> {
                                                 BigDecimal expected = season.getExpectedYieldKg();
                                                 BigDecimal actual = harvestBySeasonId.getOrDefault(season.getId(),
                                                                 BigDecimal.ZERO);
 
-                                                // Calculate variance percent
+                                                // Calculate variance percent (scale 2)
                                                 BigDecimal variance = null;
                                                 if (expected != null && expected.compareTo(BigDecimal.ZERO) > 0) {
                                                         variance = actual.subtract(expected)
-                                                                        .divide(expected, 2, RoundingMode.HALF_UP)
-                                                                        .multiply(BigDecimal.valueOf(100));
+                                                                        .divide(expected, 4, RoundingMode.HALF_UP)
+                                                                        .multiply(BigDecimal.valueOf(100))
+                                                                        .setScale(2, RoundingMode.HALF_UP);
                                                 }
 
                                                 // Get plot and farm names
@@ -217,145 +224,250 @@ public class AdminReportsService {
                                         .collect(Collectors.toList());
                 } catch (Exception e) {
                         log.error("Error generating yield report: {}", e.getMessage(), e);
-                        // Return empty list instead of failing
                         return Collections.emptyList();
                 }
         }
 
         /**
          * Cost Report: Total expenses per season with cost/kg calculation.
-         * Filter by year (season.start_date).
+         * Uses optimized date range query with optional filters.
          */
-        public List<AdminReportResponse.CostReport> getCostReport(Integer year) {
-                log.info("Generating cost report for year: {}", year);
+        public List<AdminReportResponse.CostReport> getCostReport(AdminReportFilter filter) {
+                log.info("Generating cost report with filter: {}", filter);
 
-                int targetYear = year != null ? year : LocalDate.now().getYear();
+                try {
+                        LocalDate from = filter.getEffectiveFromDate();
+                        LocalDate to = filter.getEffectiveToDate();
 
-                // Get all seasons for target year
-                var seasons = seasonRepository.findAll().stream()
-                                .filter(s -> s.getStartDate() != null && s.getStartDate().getYear() == targetYear)
-                                .collect(Collectors.toList());
+                        // Step 1: Get seasons with optimized query
+                        var seasons = seasonRepository.findByFilters(
+                                        from, to, filter.getCropId(), filter.getFarmId(), filter.getPlotId());
 
-                // Get all expenses grouped by seasonId
-                Map<Integer, BigDecimal> expenseBySeasonId = expenseRepository.findAll().stream()
-                                .filter(e -> e.getSeason() != null)
-                                .collect(Collectors.groupingBy(
-                                                e -> e.getSeason().getId(),
-                                                Collectors.reducing(BigDecimal.ZERO,
-                                                                e -> e.getTotalCost() != null ? e.getTotalCost()
-                                                                                : BigDecimal.ZERO,
-                                                                BigDecimal::add)));
+                        if (seasons.isEmpty()) {
+                                return Collections.emptyList();
+                        }
 
-                // Get all harvests grouped by seasonId
-                Map<Integer, BigDecimal> harvestBySeasonId = harvestRepository.findAll().stream()
-                                .filter(h -> h.getSeason() != null)
-                                .collect(Collectors.groupingBy(
-                                                h -> h.getSeason().getId(),
-                                                Collectors.reducing(BigDecimal.ZERO,
-                                                                h -> h.getQuantity() != null ? h.getQuantity()
-                                                                                : BigDecimal.ZERO,
-                                                                BigDecimal::add)));
+                        // Step 2: Collect season IDs
+                        Set<Integer> seasonIds = seasons.stream()
+                                        .map(Season::getId)
+                                        .collect(Collectors.toSet());
 
-                return seasons.stream()
-                                .map(season -> {
-                                        BigDecimal totalExpense = expenseBySeasonId.getOrDefault(season.getId(),
-                                                        BigDecimal.ZERO);
-                                        BigDecimal totalYield = harvestBySeasonId.getOrDefault(season.getId(),
-                                                        BigDecimal.ZERO);
+                        // Step 3: Get expense aggregates via projection (type-safe)
+                        Map<Integer, BigDecimal> expenseBySeasonId = expenseRepository
+                                        .sumExpensesBySeasonIds(seasonIds).stream()
+                                        .collect(Collectors.toMap(
+                                                        AdminReportProjections.SeasonExpenseAgg::getSeasonId,
+                                                        AdminReportProjections.SeasonExpenseAgg::getTotalExpense));
 
-                                        // Calculate cost per kg
-                                        BigDecimal costPerKg = null;
-                                        if (totalYield.compareTo(BigDecimal.ZERO) > 0) {
-                                                costPerKg = totalExpense.divide(totalYield, 2, RoundingMode.HALF_UP);
-                                        }
+                        // Step 4: Get harvest aggregates via projection
+                        Map<Integer, BigDecimal> harvestBySeasonId = harvestRepository
+                                        .sumQuantityBySeasonIds(seasonIds).stream()
+                                        .collect(Collectors.toMap(
+                                                        AdminReportProjections.SeasonHarvestAgg::getSeasonId,
+                                                        AdminReportProjections.SeasonHarvestAgg::getTotalQuantity));
 
-                                        return AdminReportResponse.CostReport.builder()
-                                                        .seasonId(season.getId())
-                                                        .seasonName(season.getSeasonName())
-                                                        .cropName(season.getCrop() != null
-                                                                        ? season.getCrop().getCropName()
-                                                                        : null)
-                                                        .totalExpense(totalExpense)
-                                                        .totalYieldKg(totalYield)
-                                                        .costPerKg(costPerKg)
-                                                        .build();
-                                })
-                                .sorted(Comparator.comparing(AdminReportResponse.CostReport::getSeasonId))
-                                .collect(Collectors.toList());
+                        // Step 5: Assemble DTOs
+                        return seasons.stream()
+                                        .map(season -> {
+                                                BigDecimal totalExpense = expenseBySeasonId.getOrDefault(season.getId(),
+                                                                BigDecimal.ZERO).setScale(0, RoundingMode.HALF_UP);
+                                                BigDecimal totalYield = harvestBySeasonId.getOrDefault(season.getId(),
+                                                                BigDecimal.ZERO);
+
+                                                // Calculate cost per kg (scale 2)
+                                                BigDecimal costPerKg = null;
+                                                if (totalYield.compareTo(BigDecimal.ZERO) > 0) {
+                                                        costPerKg = totalExpense.divide(totalYield, 2,
+                                                                        RoundingMode.HALF_UP);
+                                                }
+
+                                                return AdminReportResponse.CostReport.builder()
+                                                                .seasonId(season.getId())
+                                                                .seasonName(season.getSeasonName())
+                                                                .cropName(season.getCrop() != null
+                                                                                ? season.getCrop().getCropName()
+                                                                                : null)
+                                                                .totalExpense(totalExpense)
+                                                                .totalYieldKg(totalYield)
+                                                                .costPerKg(costPerKg)
+                                                                .build();
+                                        })
+                                        .sorted(Comparator.comparing(AdminReportResponse.CostReport::getSeasonId))
+                                        .collect(Collectors.toList());
+                } catch (Exception e) {
+                        log.error("Error generating cost report: {}", e.getMessage(), e);
+                        return Collections.emptyList();
+                }
         }
 
         /**
          * Revenue Report: Total revenue from harvests.
-         * harvests.unit = price per kg (VND)
-         * totalRevenue = SUM(quantity * unit)
+         * Uses optimized aggregation query.
+         * totalRevenue = SUM(quantity * unit) where unit = price per kg (VND)
          */
-        public List<AdminReportResponse.RevenueReport> getRevenueReport(Integer year) {
-                log.info("Generating revenue report for year: {}", year);
+        public List<AdminReportResponse.RevenueReport> getRevenueReport(AdminReportFilter filter) {
+                log.info("Generating revenue report with filter: {}", filter);
 
-                int targetYear = year != null ? year : LocalDate.now().getYear();
+                try {
+                        LocalDate from = filter.getEffectiveFromDate();
+                        LocalDate to = filter.getEffectiveToDate();
 
-                // Get all seasons for target year
-                var seasons = seasonRepository.findAll().stream()
-                                .filter(s -> s.getStartDate() != null && s.getStartDate().getYear() == targetYear)
-                                .collect(Collectors.toList());
+                        // Step 1: Get seasons with optimized query
+                        var seasons = seasonRepository.findByFilters(
+                                        from, to, filter.getCropId(), filter.getFarmId(), filter.getPlotId());
 
-                Set<Integer> seasonIds = seasons.stream()
-                                .map(Season::getId)
-                                .collect(Collectors.toSet());
+                        if (seasons.isEmpty()) {
+                                return Collections.emptyList();
+                        }
 
-                // Get all harvests for these seasons
-                var allHarvests = harvestRepository.findAll().stream()
-                                .filter(h -> h.getSeason() != null && seasonIds.contains(h.getSeason().getId()))
-                                .collect(Collectors.toList());
+                        // Step 2: Collect season IDs
+                        Set<Integer> seasonIds = seasons.stream()
+                                        .map(Season::getId)
+                                        .collect(Collectors.toSet());
 
-                // Group harvests by seasonId and calculate revenue
-                Map<Integer, List<Harvest>> harvestsBySeasonId = allHarvests.stream()
-                                .collect(Collectors.groupingBy(h -> h.getSeason().getId()));
+                        // Step 3: Get revenue aggregates via projection (type-safe)
+                        Map<Integer, AdminReportProjections.SeasonRevenueAgg> revenueBySeasonId = harvestRepository
+                                        .sumRevenueBySeasonIds(seasonIds).stream()
+                                        .collect(Collectors.toMap(
+                                                        AdminReportProjections.SeasonRevenueAgg::getSeasonId,
+                                                        agg -> agg));
 
-                return seasons.stream()
-                                .map(season -> {
-                                        List<Harvest> seasonHarvests = harvestsBySeasonId.getOrDefault(season.getId(),
-                                                        Collections.emptyList());
+                        // Step 4: Assemble DTOs
+                        return seasons.stream()
+                                        .map(season -> {
+                                                AdminReportProjections.SeasonRevenueAgg agg = revenueBySeasonId
+                                                                .get(season.getId());
 
-                                        BigDecimal totalQuantity = seasonHarvests.stream()
-                                                        .map(h -> h.getQuantity() != null ? h.getQuantity()
-                                                                        : BigDecimal.ZERO)
-                                                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+                                                BigDecimal totalQuantity = agg != null ? agg.getTotalQuantity()
+                                                                : BigDecimal.ZERO;
+                                                BigDecimal totalRevenue = agg != null
+                                                                ? agg.getTotalRevenue().setScale(0,
+                                                                                RoundingMode.HALF_UP)
+                                                                : BigDecimal.ZERO;
 
-                                        // unit = price per kg, so revenue = quantity * unit
-                                        BigDecimal totalRevenue = seasonHarvests.stream()
-                                                        .map(h -> {
-                                                                BigDecimal qty = h.getQuantity() != null
-                                                                                ? h.getQuantity()
-                                                                                : BigDecimal.ZERO;
-                                                                BigDecimal price = h.getUnit() != null ? h.getUnit()
-                                                                                : BigDecimal.ZERO;
-                                                                return qty.multiply(price);
-                                                        })
-                                                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+                                                // Calculate average price per unit (scale 2)
+                                                BigDecimal avgPrice = null;
+                                                if (totalQuantity.compareTo(BigDecimal.ZERO) > 0) {
+                                                        avgPrice = totalRevenue.divide(totalQuantity, 2,
+                                                                        RoundingMode.HALF_UP);
+                                                }
 
-                                        // Calculate average price per unit
-                                        BigDecimal avgPrice = null;
-                                        if (totalQuantity.compareTo(BigDecimal.ZERO) > 0) {
-                                                avgPrice = totalRevenue.divide(totalQuantity, 2, RoundingMode.HALF_UP);
-                                        }
+                                                return AdminReportResponse.RevenueReport.builder()
+                                                                .seasonId(season.getId())
+                                                                .seasonName(season.getSeasonName())
+                                                                .cropName(season.getCrop() != null
+                                                                                ? season.getCrop().getCropName()
+                                                                                : null)
+                                                                .totalQuantity(totalQuantity)
+                                                                .totalRevenue(totalRevenue)
+                                                                .avgPricePerUnit(avgPrice)
+                                                                .build();
+                                        })
+                                        .filter(r -> r.getTotalQuantity().compareTo(BigDecimal.ZERO) > 0)
+                                        .sorted(Comparator.comparing(AdminReportResponse.RevenueReport::getSeasonId))
+                                        .collect(Collectors.toList());
+                } catch (Exception e) {
+                        log.error("Error generating revenue report: {}", e.getMessage(), e);
+                        return Collections.emptyList();
+                }
+        }
 
-                                        return AdminReportResponse.RevenueReport.builder()
-                                                        .seasonId(season.getId())
-                                                        .seasonName(season.getSeasonName())
-                                                        .cropName(season.getCrop() != null
-                                                                        ? season.getCrop().getCropName()
-                                                                        : null)
-                                                        .totalQuantity(totalQuantity)
-                                                        .totalRevenue(totalRevenue)
-                                                        .avgPricePerUnit(avgPrice)
-                                                        .build();
-                                })
-                                .filter(r -> r.getTotalQuantity().compareTo(BigDecimal.ZERO) > 0) // Only include
-                                                                                                  // seasons with
-                                                                                                  // harvests
-                                .sorted(Comparator.comparing(AdminReportResponse.RevenueReport::getSeasonId))
-                                .collect(Collectors.toList());
+        /**
+         * Profit Report: Combined revenue and expense analysis per season.
+         * grossProfit = totalRevenue - totalExpense
+         * profitMargin = (grossProfit / totalRevenue) * 100
+         * returnOnCost = (grossProfit / totalExpense) * 100
+         */
+        public List<AdminReportResponse.ProfitReport> getProfitReport(AdminReportFilter filter) {
+                log.info("Generating profit report with filter: {}", filter);
+
+                try {
+                        LocalDate from = filter.getEffectiveFromDate();
+                        LocalDate to = filter.getEffectiveToDate();
+
+                        // Step 1: Get seasons with optimized query
+                        var seasons = seasonRepository.findByFilters(
+                                        from, to, filter.getCropId(), filter.getFarmId(), filter.getPlotId());
+
+                        if (seasons.isEmpty()) {
+                                return Collections.emptyList();
+                        }
+
+                        // Step 2: Collect season IDs
+                        Set<Integer> seasonIds = seasons.stream()
+                                        .map(Season::getId)
+                                        .collect(Collectors.toSet());
+
+                        // Step 3: Get revenue aggregates
+                        Map<Integer, AdminReportProjections.SeasonRevenueAgg> revenueBySeasonId = harvestRepository
+                                        .sumRevenueBySeasonIds(seasonIds).stream()
+                                        .collect(Collectors.toMap(
+                                                        AdminReportProjections.SeasonRevenueAgg::getSeasonId,
+                                                        agg -> agg));
+
+                        // Step 4: Get expense aggregates
+                        Map<Integer, BigDecimal> expenseBySeasonId = expenseRepository
+                                        .sumExpensesBySeasonIds(seasonIds).stream()
+                                        .collect(Collectors.toMap(
+                                                        AdminReportProjections.SeasonExpenseAgg::getSeasonId,
+                                                        AdminReportProjections.SeasonExpenseAgg::getTotalExpense));
+
+                        // Step 5: Assemble DTOs
+                        return seasons.stream()
+                                        .map(season -> {
+                                                AdminReportProjections.SeasonRevenueAgg revAgg = revenueBySeasonId
+                                                                .get(season.getId());
+
+                                                BigDecimal totalRevenue = revAgg != null
+                                                                ? revAgg.getTotalRevenue().setScale(0,
+                                                                                RoundingMode.HALF_UP)
+                                                                : BigDecimal.ZERO;
+                                                BigDecimal totalExpense = expenseBySeasonId.getOrDefault(season.getId(),
+                                                                BigDecimal.ZERO).setScale(0, RoundingMode.HALF_UP);
+                                                BigDecimal grossProfit = totalRevenue.subtract(totalExpense);
+
+                                                // Calculate profitMargin (scale 2), null if no revenue
+                                                BigDecimal profitMargin = null;
+                                                if (totalRevenue.compareTo(BigDecimal.ZERO) > 0) {
+                                                        profitMargin = grossProfit
+                                                                        .divide(totalRevenue, 4, RoundingMode.HALF_UP)
+                                                                        .multiply(BigDecimal.valueOf(100))
+                                                                        .setScale(2, RoundingMode.HALF_UP);
+                                                }
+
+                                                // Calculate returnOnCost (scale 2), null if no expense
+                                                BigDecimal returnOnCost = null;
+                                                if (totalExpense.compareTo(BigDecimal.ZERO) > 0) {
+                                                        returnOnCost = grossProfit
+                                                                        .divide(totalExpense, 4, RoundingMode.HALF_UP)
+                                                                        .multiply(BigDecimal.valueOf(100))
+                                                                        .setScale(2, RoundingMode.HALF_UP);
+                                                }
+
+                                                // Get farm name
+                                                Plot plot = season.getPlot();
+                                                Farm farm = plot != null ? plot.getFarm() : null;
+
+                                                return AdminReportResponse.ProfitReport.builder()
+                                                                .seasonId(season.getId())
+                                                                .seasonName(season.getSeasonName())
+                                                                .cropName(season.getCrop() != null
+                                                                                ? season.getCrop().getCropName()
+                                                                                : null)
+                                                                .farmName(farm != null ? farm.getName() : null)
+                                                                .totalRevenue(totalRevenue)
+                                                                .totalExpense(totalExpense)
+                                                                .grossProfit(grossProfit)
+                                                                .profitMargin(profitMargin)
+                                                                .returnOnCost(returnOnCost)
+                                                                .build();
+                                        })
+                                        .sorted(Comparator.comparing(AdminReportResponse.ProfitReport::getSeasonId))
+                                        .collect(Collectors.toList());
+                } catch (Exception e) {
+                        log.error("Error generating profit report: {}", e.getMessage(), e);
+                        return Collections.emptyList();
+                }
         }
 
         /**

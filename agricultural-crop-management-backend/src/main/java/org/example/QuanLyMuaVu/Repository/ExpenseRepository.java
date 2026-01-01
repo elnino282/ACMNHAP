@@ -1,5 +1,6 @@
 package org.example.QuanLyMuaVu.Repository;
 
+import org.example.QuanLyMuaVu.DTO.Response.AdminReportProjections;
 import org.example.QuanLyMuaVu.Entity.Expense;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -31,4 +32,14 @@ public interface ExpenseRepository extends JpaRepository<Expense, Integer> {
      * Used by FarmerDashboardService for recent activity.
      */
     List<Expense> findTop5ByUser_IdOrderByCreatedAtDesc(Long userId);
+
+    /**
+     * Sum expenses grouped by season ID for given season IDs.
+     * Uses projection interface for type-safety.
+     * Used by AdminReportsService for Cost/Profit reports.
+     */
+    @Query("SELECT e.season.id AS seasonId, COALESCE(SUM(e.totalCost), 0) AS totalExpense " +
+            "FROM Expense e WHERE e.season.id IN :seasonIds GROUP BY e.season.id")
+    List<AdminReportProjections.SeasonExpenseAgg> sumExpensesBySeasonIds(
+            @Param("seasonIds") java.util.Set<Integer> seasonIds);
 }

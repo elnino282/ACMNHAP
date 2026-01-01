@@ -523,7 +523,7 @@ export function AdminDocumentsPage() {
             {/* Create/Edit Modal */}
             {showForm && (
                 <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center">
-                    <div className="bg-card border border-border rounded-lg shadow-lg w-full max-w-lg mx-4">
+                    <div className="bg-card border border-border rounded-lg shadow-lg w-full max-w-md mx-4">
                         <div className="flex items-center justify-between p-4 border-b border-border">
                             <h3 className="text-lg font-semibold">
                                 {editingDocument ? 'Edit Document' : 'Create Document'}
@@ -548,7 +548,7 @@ export function AdminDocumentsPage() {
                                     onChange={(e) => setFormTitle(e.target.value)}
                                     className={`w-full px-3 py-2 border rounded-lg bg-background text-sm ${formErrors.title ? 'border-destructive' : 'border-border'
                                         }`}
-                                    placeholder="e.g., Farm Safety Policy"
+                                    placeholder="Enter title"
                                 />
                                 {formErrors.title && (
                                     <p className="text-xs text-destructive mt-1">{formErrors.title}</p>
@@ -561,7 +561,7 @@ export function AdminDocumentsPage() {
                                 <textarea
                                     value={formDescription}
                                     onChange={(e) => setFormDescription(e.target.value)}
-                                    className="w-full px-3 py-2 border border-border rounded-lg bg-background text-sm min-h-[80px]"
+                                    className="w-full px-3 py-2 border border-border rounded-lg bg-background text-sm min-h-[60px] resize-none"
                                     placeholder="Optional description"
                                 />
                             </div>
@@ -577,47 +577,47 @@ export function AdminDocumentsPage() {
                                     onChange={(e) => setFormUrl(e.target.value)}
                                     className={`w-full px-3 py-2 border rounded-lg bg-background text-sm ${formErrors.url ? 'border-destructive' : 'border-border'
                                         }`}
-                                    placeholder="https://example.com/document.pdf"
+                                    placeholder="https://..."
                                 />
                                 {formErrors.url && (
                                     <p className="text-xs text-destructive mt-1">{formErrors.url}</p>
                                 )}
                             </div>
 
-                            {/* Document Type */}
-                            <div>
-                                <label className="block text-sm font-medium mb-1">
-                                    Document Type <span className="text-destructive">*</span>
-                                </label>
-                                <select
-                                    value={formType}
-                                    onChange={(e) => setFormType(e.target.value as DocumentType)}
-                                    className="w-full px-3 py-2 border border-border rounded-lg bg-background text-sm"
-                                >
-                                    {DOCUMENT_TYPES.map((t) => (
-                                        <option key={t} value={t}>
-                                            {t}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            {/* Status */}
-                            <div>
-                                <label className="block text-sm font-medium mb-1">
-                                    Status <span className="text-destructive">*</span>
-                                </label>
-                                <select
-                                    value={formStatus}
-                                    onChange={(e) => setFormStatus(e.target.value as DocumentStatus)}
-                                    className="w-full px-3 py-2 border border-border rounded-lg bg-background text-sm"
-                                >
-                                    {DOCUMENT_STATUSES.map((s) => (
-                                        <option key={s} value={s}>
-                                            {s}
-                                        </option>
-                                    ))}
-                                </select>
+                            {/* Document Type & Status - 2 columns */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">
+                                        Type <span className="text-destructive">*</span>
+                                    </label>
+                                    <select
+                                        value={formType}
+                                        onChange={(e) => setFormType(e.target.value as DocumentType)}
+                                        className="w-full px-3 py-2 border border-border rounded-lg bg-background text-sm"
+                                    >
+                                        {DOCUMENT_TYPES.map((t) => (
+                                            <option key={t} value={t}>
+                                                {t}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">
+                                        Status <span className="text-destructive">*</span>
+                                    </label>
+                                    <select
+                                        value={formStatus}
+                                        onChange={(e) => setFormStatus(e.target.value as DocumentStatus)}
+                                        className="w-full px-3 py-2 border border-border rounded-lg bg-background text-sm"
+                                    >
+                                        {DOCUMENT_STATUSES.map((s) => (
+                                            <option key={s} value={s}>
+                                                {s}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
                             </div>
                         </div>
 
@@ -692,8 +692,8 @@ export function AdminDocumentsPage() {
             {toast && (
                 <div
                     className={`fixed bottom-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 ${toast.type === 'success'
-                            ? 'bg-green-600 text-white'
-                            : 'bg-destructive text-destructive-foreground'
+                        ? 'bg-green-600 text-white'
+                        : 'bg-destructive text-destructive-foreground'
                         }`}
                 >
                     {toast.type === 'success' ? (

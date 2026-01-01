@@ -74,7 +74,7 @@ export function AdminDashboard() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="mb-1">Admin Dashboard</h1>
+            <h1 className="mb-1"><b>Admin Dashboard</b></h1>
             {isFetching && (
               <RefreshCw className="h-4 w-4 text-muted-foreground animate-spin" />
             )}

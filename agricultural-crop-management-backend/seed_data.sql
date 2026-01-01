@@ -1,11 +1,13 @@
 -- =========================================================
 -- ACM Platform - Seed Data (MySQL Compatible)
 -- =========================================================
--- This file contains INSERT statements for tables that require
--- existing data from: provinces, roles, user_roles, users, wards
+-- Version: 3.0 - Updated 2026-01-02
 -- 
--- Usage: Run this file AFTER the base data (provinces, roles, users, wards) 
---        has been loaded into the database.
+-- This file contains INSERT statements for all tables.
+-- Prerequisites: provinces, roles, users, wards tables must have base data.
+-- 
+-- Default Admin: admin / Admin@123
+-- Default Farmer: farmer / Farmer@123 (user_id = 2)
 -- =========================================================
 
 SET FOREIGN_KEY_CHECKS = 0;
@@ -14,8 +16,8 @@ SET SQL_MODE = 'NO_AUTO_VALUE_ON_ZERO';
 -- =========================================================
 -- 1. FARMS
 -- =========================================================
--- Sample farms owned by users (assuming user_id=2 is a farmer)
--- Note: Ensure users with IDs 2, 3, 4 exist before running this
+-- Farms owned by farmer user (user_id = 2)
+-- Entity: owner_id, farm_name, province_id, ward_id, area, active
 INSERT INTO farms (owner_id, farm_name, province_id, ward_id, area, active) VALUES
 (2, 'Nông trại Hoa Lan', 24, 25112, 12.50, TRUE),
 (2, 'Nông trại Bình An', 24, 25112, 8.20, TRUE),
@@ -24,18 +26,18 @@ INSERT INTO farms (owner_id, farm_name, province_id, ward_id, area, active) VALU
 -- =========================================================
 -- 2. PLOTS
 -- =========================================================
--- Plots within farms. Plot areas should not exceed farm area.
-INSERT INTO plots (farm_id, plot_name, area, soil_type, status, province_id, ward_id, created_by) VALUES
-(1, 'Lô A1 - Thửa trồng rau', 2.50, 'LOAM', 'IN_USE', 24, 25112, 2),
-(1, 'Lô A2 - Thửa trồng lúa', 3.00, 'CLAY', 'IN_USE', 24, 25112, 2),
-(1, 'Lô A3 - Dự trữ', 2.00, 'SANDY', 'AVAILABLE', 24, 25112, 2),
-(2, 'Lô B1 - Cà chua', 1.80, 'SANDY', 'IN_USE', 24, 25112, 2),
-(2, 'Lô B2 - Dưa chuột', 2.50, 'LOAM', 'IN_USE', 24, 25112, 2);
+-- Entity: created_by, farm_id, plot_name, area, soil_type, status, province_id, ward_id, created_at, updated_at
+INSERT INTO plots (farm_id, plot_name, area, soil_type, status, province_id, ward_id, created_by, created_at, updated_at) VALUES
+(1, 'Lô A1 - Thửa trồng rau', 2.50, 'LOAM', 'IN_USE', 24, 25112, 2, NOW(), NOW()),
+(1, 'Lô A2 - Thửa trồng lúa', 3.00, 'CLAY', 'IN_USE', 24, 25112, 2, NOW(), NOW()),
+(1, 'Lô A3 - Dự trữ', 2.00, 'SANDY', 'AVAILABLE', 24, 25112, 2, NOW(), NOW()),
+(2, 'Lô B1 - Cà chua', 1.80, 'SANDY', 'IN_USE', 24, 25112, 2, NOW(), NOW()),
+(2, 'Lô B2 - Dưa chuột', 2.50, 'LOAM', 'IN_USE', 24, 25112, 2, NOW(), NOW());
 
 -- =========================================================
 -- 3. CROPS
 -- =========================================================
--- Master data for crop types
+-- Entity: crop_name, description
 INSERT INTO crops (crop_name, description) VALUES
 ('Lúa', 'Cây lương thực chính'),
 ('Cà chua', 'Cây rau ăn quả'),
@@ -46,7 +48,7 @@ INSERT INTO crops (crop_name, description) VALUES
 -- =========================================================
 -- 4. VARIETIES
 -- =========================================================
--- Crop varieties belong to crops
+-- Entity: crop_id, name, description  (id is auto-generated)
 INSERT INTO varieties (crop_id, name, description) VALUES
 (1, 'ST25', 'Giống lúa thơm đặc sản'),
 (1, 'OM 5451', 'Giống lúa năng suất cao'),
@@ -59,8 +61,9 @@ INSERT INTO varieties (crop_id, name, description) VALUES
 -- =========================================================
 -- 5. SEASONS
 -- =========================================================
--- Growing seasons for crops on plots
--- Column order MUST match the entity fields exactly
+-- Entity: season_name, plot_id, crop_id, variety_id, start_date, planned_harvest_date, end_date,
+--         status, initial_plant_count, current_plant_count, expected_yield_kg, actual_yield_kg, notes, created_at
+-- Status: PLANNED, ACTIVE, COMPLETED, CANCELLED, ARCHIVED
 INSERT INTO seasons (
   season_name, plot_id, crop_id, variety_id,
   start_date, planned_harvest_date, end_date,
@@ -94,135 +97,139 @@ INSERT INTO seasons (
 -- =========================================================
 -- 6. TASKS
 -- =========================================================
--- Tasks assigned to users for managing seasons
--- Task dates should align with season dates
+-- Entity: user_id, season_id, title, description, planned_date, due_date, status,
+--         actual_start_date, actual_end_date, notes, created_at
+-- Status: PENDING, IN_PROGRESS, DONE, OVERDUE, CANCELLED
 INSERT INTO tasks (
-  title, description, planned_date, due_date,
-  status, actual_start_date, actual_end_date,
-  notes, season_id, user_id, created_at
+  user_id, season_id, title, description,
+  planned_date, due_date, status,
+  actual_start_date, actual_end_date, notes, created_at
 ) VALUES
 -- Tasks for Season 1 (Tomato - Plot A1)
-('Chuẩn bị luống & tưới tiêu', 'Chuẩn bị luống ươm, kiểm tra đường ống tưới.',
- '2025-10-01', '2025-10-02',
- 'PENDING', NULL, NULL,
- NULL, 1, 2, NOW()),
+(2, 1, 'Chuẩn bị luống & tưới tiêu', 'Chuẩn bị luống ươm, kiểm tra đường ống tưới.',
+ '2025-10-01', '2025-10-02', 'PENDING',
+ NULL, NULL, NULL, NOW()),
 
-('Cấy mạ cà chua', 'Di chuyển mạ vào Lô A1, khoảng cách 40cm.',
- '2025-10-02', '2025-10-03',
- 'DONE', '2025-10-02', '2025-10-03',
- 'Hoàn thành đúng hạn.', 1, 2, NOW()),
+(2, 1, 'Cấy mạ cà chua', 'Di chuyển mạ vào Lô A1, khoảng cách 40cm.',
+ '2025-10-02', '2025-10-03', 'DONE',
+ '2025-10-02', '2025-10-03', 'Hoàn thành đúng hạn.', NOW()),
 
-('Bón phân NPK', 'Bón phân NPK, sau 2h tưới nước.',
- '2025-10-10', '2025-10-10',
- 'IN_PROGRESS', '2025-10-10', NULL,
- 'Sử dụng lô NPK-2025-01', 1, 2, NOW()),
+(2, 1, 'Bón phân NPK', 'Bón phân NPK, sau 2h tưới nước.',
+ '2025-10-10', '2025-10-10', 'IN_PROGRESS',
+ '2025-10-10', NULL, 'Sử dụng lô NPK-2025-01', NOW()),
 
-('Phun thuốc trừ sâu', 'Phun thuốc phòng trừ rệp.',
- '2025-10-15', '2025-10-16',
- 'PENDING', NULL, NULL,
- NULL, 1, 2, NOW()),
+(2, 1, 'Phun thuốc trừ sâu', 'Phun thuốc phòng trừ rệp.',
+ '2025-10-15', '2025-10-16', 'PENDING',
+ NULL, NULL, NULL, NOW()),
 
 -- Tasks for Season 2 (Rice - Plot A2)
-('Ngâm mạ lúa', 'Ngâm hạt giống lúa ST25.',
- '2025-09-15', '2025-09-16',
- 'DONE', '2025-09-15', '2025-09-15',
- 'Hoàn thành', 2, 2, NOW()),
+(2, 2, 'Ngâm mạ lúa', 'Ngâm hạt giống lúa ST25.',
+ '2025-09-15', '2025-09-16', 'DONE',
+ '2025-09-15', '2025-09-15', 'Hoàn thành', NOW()),
 
-('Làm đất và cày bừa', 'Cày bừa lô đất chuẩn bị gieo sạ.',
- '2025-09-18', '2025-09-20',
- 'DONE', '2025-09-18', '2025-09-19',
- 'Đất đã được làm kỹ', 2, 2, NOW()),
+(2, 2, 'Làm đất và cày bừa', 'Cày bừa lô đất chuẩn bị gieo sạ.',
+ '2025-09-18', '2025-09-20', 'DONE',
+ '2025-09-18', '2025-09-19', 'Đất đã được làm kỹ', NOW()),
 
-('Gieo sạ', 'Gieo sạ lúa vào ruộng.',
- '2025-09-20', '2025-09-21',
- 'IN_PROGRESS', '2025-09-20', NULL,
- NULL, 2, 2, NOW());
+(2, 2, 'Gieo sạ', 'Gieo sạ lúa vào ruộng.',
+ '2025-09-20', '2025-09-21', 'IN_PROGRESS',
+ '2025-09-20', NULL, NULL, NOW()),
+
+-- Tasks for Season 3 (Completed tomato)
+(2, 3, 'Thu hoạch đợt 1', 'Thu hoạch cà chua Beef đợt 1.',
+ '2025-12-05', '2025-12-05', 'DONE',
+ '2025-12-05', '2025-12-05', 'Thu hoạch 300kg, chất lượng tốt.', NOW()),
+
+(2, 3, 'Thu hoạch đợt 2', 'Thu hoạch cà chua Beef đợt 2.',
+ '2025-12-15', '2025-12-15', 'DONE',
+ '2025-12-15', '2025-12-15', 'Thu hoạch 350.5kg.', NOW());
 
 -- =========================================================
 -- 7. FIELD LOGS
 -- =========================================================
--- Activity logs for seasons
--- Log dates should be within season date range
-INSERT INTO field_logs (season_id, log_date, log_type, notes) VALUES
-(1, '2025-10-03', 'TRANSPLANT', 'Cấy mạ hoàn tất; cây con trông khỏe mạnh'),
-(1, '2025-10-10', 'FERTILIZE', 'Bón NPK; tưới nước sau khi bón'),
-(1, '2025-10-15', 'PEST', 'Phát hiện một ít rệp trên lá'),
-(1, '2025-10-20', 'WATER', 'Tưới nước thường xuyên do thời tiết nóng'),
-(2, '2025-09-16', 'SOW', 'Gieo sạ hoàn tất'),
-(2, '2025-10-01', 'FERTILIZE', 'Bón phân lót'),
-(3, '2025-12-05', 'HARVEST', 'Thu hoạch đợt 1'),
-(3, '2025-12-12', 'HARVEST', 'Thu hoạch đợt 2 - kết thúc vụ');
+-- Entity: season_id, log_date, log_type, notes, created_at
+INSERT INTO field_logs (season_id, log_date, log_type, notes, created_at) VALUES
+(1, '2025-10-03', 'TRANSPLANT', 'Cấy mạ hoàn tất; cây con trông khỏe mạnh', NOW()),
+(1, '2025-10-10', 'FERTILIZE', 'Bón NPK; tưới nước sau khi bón', NOW()),
+(1, '2025-10-15', 'PEST', 'Phát hiện một ít rệp trên lá', NOW()),
+(1, '2025-10-20', 'WATER', 'Tưới nước thường xuyên do thời tiết nóng', NOW()),
+(2, '2025-09-16', 'SOW', 'Gieo sạ hoàn tất', NOW()),
+(2, '2025-10-01', 'FERTILIZE', 'Bón phân lót', NOW()),
+(3, '2025-12-05', 'HARVEST', 'Thu hoạch đợt 1', NOW()),
+(3, '2025-12-12', 'HARVEST', 'Thu hoạch đợt 2 - kết thúc vụ', NOW());
 
 -- =========================================================
 -- 8. EXPENSES
 -- =========================================================
--- Expenses tracked per season. total_cost = quantity * unit_price
--- Expense dates should align with season dates
-INSERT INTO expenses (expense_date, item_name, quantity, unit_price, total_cost, season_id, user_id) VALUES
+-- Entity: user_id, season_id, item_name, unit_price, quantity, total_cost, expense_date, created_at
+-- Note: Entity has unitPrice before quantity
+INSERT INTO expenses (user_id, season_id, item_name, unit_price, quantity, total_cost, expense_date, created_at) VALUES
 -- Expenses for Season 1 (Tomato Season - Plot A1)
-('2025-10-01', 'Mạ cà chua', 1200, 1500.00, 1800000.00, 1, 2),
-('2025-10-05', 'Phân compost (bao)', 20, 45000.00, 900000.00, 1, 2),
-('2025-10-10', 'Phân NPK (kg)', 50, 650.00, 32500.00, 1, 2),
-('2025-10-15', 'Thuốc trừ rệp (ml)', 500, 100.00, 50000.00, 1, 2),
-('2025-10-20', 'Bẫy dính (cái)', 20, 5000.00, 100000.00, 1, 2),
+(2, 1, 'Mạ cà chua', 1500.00, 1200, 1800000.00, '2025-10-01', NOW()),
+(2, 1, 'Phân compost (bao)', 45000.00, 20, 900000.00, '2025-10-05', NOW()),
+(2, 1, 'Phân NPK (kg)', 650.00, 50, 32500.00, '2025-10-10', NOW()),
+(2, 1, 'Thuốc trừ rệp (ml)', 100.00, 500, 50000.00, '2025-10-15', NOW()),
+(2, 1, 'Bẫy dính (cái)', 5000.00, 20, 100000.00, '2025-10-20', NOW()),
 
 -- Expenses for Season 2 (Rice Season - Plot A2)
-('2025-09-20', 'Hạt giống lúa ST25 (kg)', 60, 18000.00, 1080000.00, 2, 2),
-('2025-10-01', 'Phân lót (bao)', 10, 120000.00, 1200000.00, 2, 2),
+(2, 2, 'Hạt giống lúa ST25 (kg)', 18000.00, 60, 1080000.00, '2025-09-20', NOW()),
+(2, 2, 'Phân lót (bao)', 120000.00, 10, 1200000.00, '2025-10-01', NOW()),
 
 -- Expenses for Season 3 (Completed tomato)
-('2025-09-25', 'Mạ cà chua Beef', 1150, 1800.00, 2070000.00, 3, 2),
-('2025-10-05', 'Phân hữu cơ', 25, 50000.00, 1250000.00, 3, 2);
+(2, 3, 'Mạ cà chua Beef', 1800.00, 1150, 2070000.00, '2025-09-25', NOW()),
+(2, 3, 'Phân hữu cơ', 50000.00, 25, 1250000.00, '2025-10-05', NOW()),
+(2, 3, 'Thuốc trừ bệnh', 85000.00, 5, 425000.00, '2025-10-15', NOW()),
+(2, 3, 'Nhân công thu hoạch', 200000.00, 10, 2000000.00, '2025-12-20', NOW());
 
 -- =========================================================
 -- 9. WAREHOUSES
 -- =========================================================
--- Storage facilities belonging to farms
+-- Entity: farm_id, name, type, province_id, ward_id
 -- Types: INPUT (supplies), PRODUCE (harvests), MIXED (both)
-INSERT INTO warehouses (name, type, farm_id, province_id, ward_id) VALUES
-('Kho vật tư - Nông trại Hoa Lan', 'INPUT', 1, 24, 25112),
-('Kho nông sản - Nông trại Hoa Lan', 'PRODUCE', 1, 24, 25112),
-('Kho tổng hợp - Nông trại Bình An', 'MIXED', 2, 24, 25112);
+INSERT INTO warehouses (farm_id, name, type, province_id, ward_id) VALUES
+(1, 'Kho vật tư - Nông trại Hoa Lan', 'INPUT', 24, 25112),
+(1, 'Kho nông sản - Nông trại Hoa Lan', 'PRODUCE', 24, 25112),
+(2, 'Kho tổng hợp - Nông trại Bình An', 'MIXED', 24, 25112);
 
 -- =========================================================
 -- 10. STOCK LOCATIONS
 -- =========================================================
--- Physical locations within warehouses (zone-aisle-shelf-bin structure)
-INSERT INTO stock_locations (zone, aisle, shelf, bin, warehouse_id) VALUES
-('Z1', 'A1', 'S1', 'B1', 1),
-('Z1', 'A1', 'S1', 'B2', 1),
-('Z1', 'A2', 'S1', 'B1', 1),
-('Z1', 'A1', 'S2', 'B1', 1),
-('Z1', 'A1', 'S1', 'B1', 2),
-('Z1', 'A1', 'S2', 'B1', 2),
-('Z1', 'A1', 'S1', 'B1', 3);
+-- Entity: warehouse_id, zone, aisle, shelf, bin (warehouse_id first)
+INSERT INTO stock_locations (warehouse_id, zone, aisle, shelf, bin) VALUES
+(1, 'Z1', 'A1', 'S1', 'B1'),
+(1, 'Z1', 'A1', 'S1', 'B2'),
+(1, 'Z1', 'A2', 'S1', 'B1'),
+(1, 'Z1', 'A1', 'S2', 'B1'),
+(2, 'Z1', 'A1', 'S1', 'B1'),
+(2, 'Z1', 'A1', 'S2', 'B1'),
+(3, 'Z1', 'A1', 'S1', 'B1');
 
 -- =========================================================
 -- 11. SUPPLIERS
 -- =========================================================
--- Suppliers of agricultural inputs
-INSERT INTO suppliers (name, contact_phone, contact_email, license_no) VALUES
-('Công ty TNHH Vật tư Nông nghiệp AgroPlus', '0900111222', 'contact@agroplus.vn', 'LIC-AG-001'),
-('Công ty CP Giống cây trồng GreenSeed', '0900222333', 'sales@greenseed.vn', 'LIC-GS-002'),
-('Chi nhánh Phân bón Việt Nam', '0900333444', 'support@phanbon.vn', 'LIC-PB-003');
+-- Entity: name, license_no, contact_email, contact_phone
+INSERT INTO suppliers (name, license_no, contact_email, contact_phone) VALUES
+('Công ty TNHH Vật tư Nông nghiệp AgroPlus', 'LIC-AG-001', 'contact@agroplus.vn', '0900111222'),
+('Công ty CP Giống cây trồng GreenSeed', 'LIC-GS-002', 'sales@greenseed.vn', '0900222333'),
+('Chi nhánh Phân bón Việt Nam', 'LIC-PB-003', 'support@phanbon.vn', '0900333444');
 
 -- =========================================================
 -- 12. SUPPLY ITEMS
 -- =========================================================
--- Master data for supply items (fertilizers, pesticides, tools)
--- restricted_flag: 0 = FALSE (không kiểm soát), 1 = TRUE (kiểm soát đặc biệt)
-INSERT INTO supply_items (name, unit, active_ingredient, restricted_flag) VALUES
-('Phân NPK 16-16-8', 'kg', NULL, 0),
-('Phân compost hữu cơ', 'bao', NULL, 0),
-('Thuốc trừ rệp Imidacloprid 200SL', 'ml', 'Imidacloprid', 1),
-('Bẫy dính sâu bệnh', 'cái', NULL, 0),
-('Phân lân siêu lân', 'kg', NULL, 0),
-('Thuốc trừ cỏ Glyphosate', 'lít', 'Glyphosate', 1);
+-- Entity: name, category, active_ingredient, unit, restricted_flag, description
+-- Category: FERTILIZER, PESTICIDE, SEED, TOOL, OTHER
+INSERT INTO supply_items (name, category, active_ingredient, unit, restricted_flag, description) VALUES
+('Phân NPK 16-16-8', 'FERTILIZER', NULL, 'kg', FALSE, 'Phân bón tổng hợp NPK tỷ lệ 16-16-8'),
+('Phân compost hữu cơ', 'FERTILIZER', NULL, 'bao', FALSE, 'Phân compost từ nguyên liệu hữu cơ'),
+('Thuốc trừ rệp Imidacloprid 200SL', 'PESTICIDE', 'Imidacloprid', 'ml', TRUE, 'Thuốc trừ rệp công nghiệp, cần giấy phép'),
+('Bẫy dính sâu bệnh', 'TOOL', NULL, 'cái', FALSE, 'Bẫy dính côn trùng màu vàng'),
+('Phân lân siêu lân', 'FERTILIZER', NULL, 'kg', FALSE, 'Phân lân siêu hấp thụ'),
+('Thuốc trừ cỏ Glyphosate', 'PESTICIDE', 'Glyphosate', 'lít', TRUE, 'Thuốc diệt cỏ không chọn lọc, kiểm soát đặc biệt');
 
 -- =========================================================
 -- 13. SUPPLY LOTS
 -- =========================================================
--- Batches of supply items with batch codes and expiry dates
+-- Entity: supply_item_id, supplier_id, batch_code, expiry_date, status
 INSERT INTO supply_lots (supply_item_id, supplier_id, batch_code, expiry_date, status) VALUES
 (1, 1, 'NPK-2025-01', '2026-06-30', 'IN_STOCK'),
 (2, 2, 'COMP-2025-01', '2026-12-31', 'IN_STOCK'),
@@ -234,8 +241,8 @@ INSERT INTO supply_lots (supply_item_id, supplier_id, batch_code, expiry_date, s
 -- =========================================================
 -- 14. STOCK MOVEMENTS
 -- =========================================================
--- Inventory movements: IN (receiving), OUT (usage), ADJUST (corrections)
--- Quantity: positive for IN, negative for OUT/ADJUST
+-- Entity: supply_lot_id, warehouse_id, location_id, movement_type, quantity, movement_date, season_id, task_id, note
+-- Type: IN, OUT, ADJUST
 INSERT INTO stock_movements (
   warehouse_id, location_id, supply_lot_id, movement_type,
   quantity, movement_date, note, season_id, task_id
@@ -278,49 +285,75 @@ INSERT INTO stock_movements (
 -- =========================================================
 -- 15. HARVESTS
 -- =========================================================
--- Harvest records for seasons
--- Harvest dates should be within season date range
--- quantity: kg, unit: giá bán/kg (VND)
-INSERT INTO harvests (season_id, harvest_date, quantity, unit, note) VALUES
-(1, '2025-12-05', 120.50, 18000.00, 'Cà chua - thu hoạch đợt 1, chất lượng tốt'),
-(1, '2025-12-12', 150.00, 17500.00, 'Cà chua - thu hoạch đợt 2, giá giảm nhẹ'),
-(3, '2025-12-05', 300.00, 16000.00, 'Cà chua Beef - thu hoạch lần 1'),
-(3, '2025-12-15', 350.50, 15500.00, 'Cà chua Beef - thu hoạch lần 2'),
-(3, '2025-12-22', 300.00, 15000.00, 'Cà chua Beef - thu hoạch cuối vụ');
+-- Entity: season_id, harvest_date, quantity, unit (price per kg), note, created_at
+INSERT INTO harvests (season_id, harvest_date, quantity, unit, note, created_at) VALUES
+(1, '2025-12-05', 120.50, 18000.00, 'Cà chua - thu hoạch đợt 1, chất lượng tốt', NOW()),
+(1, '2025-12-12', 150.00, 17500.00, 'Cà chua - thu hoạch đợt 2, giá giảm nhẹ', NOW()),
+(3, '2025-12-05', 300.00, 16000.00, 'Cà chua Beef - thu hoạch lần 1', NOW()),
+(3, '2025-12-15', 350.50, 15500.00, 'Cà chua Beef - thu hoạch lần 2', NOW()),
+(3, '2025-12-22', 300.00, 15000.00, 'Cà chua Beef - thu hoạch cuối vụ', NOW());
 
 -- =========================================================
 -- 16. INCIDENTS
 -- =========================================================
--- Tracks incidents (pests, diseases, weather issues) reported for seasons
--- Severity: LOW, MEDIUM, HIGH. Status: OPEN, IN_PROGRESS, RESOLVED, CANCELLED
+-- Entity: season_id, reported_by, incident_type, severity, description, status, deadline, assignee_id, version,
+--         resolved_at, resolved_by, resolution_note, cancellation_reason, created_at
+-- Severity: LOW, MEDIUM, HIGH
+-- Status: OPEN, IN_PROGRESS, RESOLVED, CANCELLED
 INSERT INTO incidents (
-  season_id, reported_by, incident_type, severity,
-  status, description, deadline, resolved_at
+  season_id, reported_by, incident_type, severity, status,
+  description, deadline, assignee_id, version,
+  resolved_at, resolved_by, resolution_note, cancellation_reason, created_at
 ) VALUES
-(1, 2, 'PEST_OUTBREAK', 'MEDIUM',
- 'OPEN', 'Phát hiện rệp tăng trên lá cà chua; theo dõi hàng ngày và xử lý nếu cần.',
- '2025-10-20', NULL),
+(1, 2, 'PEST_OUTBREAK', 'MEDIUM', 'OPEN',
+ 'Phát hiện rệp tăng trên lá cà chua; theo dõi hàng ngày và xử lý nếu cần.',
+ '2025-10-20', NULL, 0, NULL, NULL, NULL, NULL, NOW()),
 
-(2, 2, 'DISEASE', 'LOW',
- 'RESOLVED', 'Một số cây lúa có dấu hiệu bệnh lùn, đã xử lý bằng thuốc.',
- '2025-10-10', '2025-10-12 00:00:00'),
+(2, 2, 'DISEASE', 'LOW', 'RESOLVED',
+ 'Một số cây lúa có dấu hiệu bệnh lùn, đã xử lý bằng thuốc.',
+ '2025-10-10', 2, 0, '2025-10-12 00:00:00', 2, 'Đã phun thuốc trị bệnh thành công.', NULL, NOW()),
 
-(1, 2, 'WEATHER', 'HIGH',
- 'RESOLVED', 'Mưa to gây úng nước, đã thoát nước kịp thời.',
- '2025-11-05', '2025-11-06 00:00:00');
+(1, 2, 'WEATHER', 'HIGH', 'RESOLVED',
+ 'Mưa to gây úng nước, đã thoát nước kịp thời.',
+ '2025-11-05', 2, 0, '2025-11-06 00:00:00', 2, 'Đã khơi thông mương thoát nước.', NULL, NOW()),
+
+(3, 2, 'PEST_OUTBREAK', 'LOW', 'RESOLVED',
+ 'Phát hiện sâu xanh trên một số cây cà chua.',
+ '2025-11-20', 2, 0, '2025-11-22 00:00:00', 2, 'Đã phun thuốc sinh học, sâu đã giảm.', NULL, NOW());
 
 -- =========================================================
 -- 17. DOCUMENTS
 -- =========================================================
--- System documents and content management
-INSERT INTO documents (title, content) VALUES
-('Hướng dẫn quản lý nông trại', 'Hướng dẫn cơ bản về quản lý nông trại và cây trồng.'),
-('Quy trình phòng trừ sâu bệnh', 'Quy trình chuẩn về phòng trừ và xử lý sâu bệnh hại.'),
-('Lịch bón phân cây trồng', 'Lịch trình bón phân theo từng loại cây và giai đoạn sinh trưởng.'),
-('An toàn vệ sinh thực phẩm', 'Các nguyên tắc về an toàn vệ sinh trong sản xuất nông nghiệp.');
+-- Entity: title, description, document_url, document_type, status, created_by, created_at, updated_at
+-- Type: POLICY, GUIDE, MANUAL, LEGAL, OTHER
+-- Status: ACTIVE, INACTIVE
+INSERT INTO documents (
+  title, description, document_url, document_type, status, created_by, created_at, updated_at
+) VALUES
+('Hướng dẫn quản lý nông trại',
+ 'Hướng dẫn cơ bản về quản lý nông trại và cây trồng.',
+ 'https://docs.google.com/document/d/example1',
+ 'GUIDE', 'ACTIVE', 1, NOW(), NOW()),
+
+('Quy trình phòng trừ sâu bệnh',
+ 'Quy trình chuẩn về phòng trừ và xử lý sâu bệnh hại.',
+ 'https://docs.google.com/document/d/example2',
+ 'MANUAL', 'ACTIVE', 1, NOW(), NOW()),
+
+('Lịch bón phân cây trồng',
+ 'Lịch trình bón phân theo từng loại cây và giai đoạn sinh trưởng.',
+ 'https://docs.google.com/document/d/example3',
+ 'GUIDE', 'ACTIVE', 1, NOW(), NOW()),
+
+('Chính sách an toàn lao động',
+ 'Các quy định về an toàn lao động trong sản xuất nông nghiệp.',
+ 'https://docs.google.com/document/d/example4',
+ 'POLICY', 'ACTIVE', 1, NOW(), NOW()),
+
+('Điều khoản sử dụng hệ thống',
+ 'Điều khoản pháp lý khi sử dụng hệ thống quản lý nông nghiệp.',
+ 'https://docs.google.com/document/d/example5',
+ 'LEGAL', 'ACTIVE', 1, NOW(), NOW());
 
 SET FOREIGN_KEY_CHECKS = 1;
 COMMIT;
-
-
-

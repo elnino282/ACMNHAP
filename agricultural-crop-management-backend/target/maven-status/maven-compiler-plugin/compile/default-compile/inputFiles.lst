@@ -54,6 +54,7 @@ C:\Users\Admin\Documents\GitHub\ACMNHAP\agricultural-crop-management-backend\src
 C:\Users\Admin\Documents\GitHub\ACMNHAP\agricultural-crop-management-backend\src\main\java\org\example\QuanLyMuaVu\DTO\Request\AdminFarmUpdateRequest.java
 C:\Users\Admin\Documents\GitHub\ACMNHAP\agricultural-crop-management-backend\src\main\java\org\example\QuanLyMuaVu\DTO\Request\AdminPlotCreateRequest.java
 C:\Users\Admin\Documents\GitHub\ACMNHAP\agricultural-crop-management-backend\src\main\java\org\example\QuanLyMuaVu\DTO\Request\AdminRecordMovementRequest.java
+C:\Users\Admin\Documents\GitHub\ACMNHAP\agricultural-crop-management-backend\src\main\java\org\example\QuanLyMuaVu\DTO\Request\AdminReportFilter.java
 C:\Users\Admin\Documents\GitHub\ACMNHAP\agricultural-crop-management-backend\src\main\java\org\example\QuanLyMuaVu\DTO\Request\AdminSeasonUpdateRequest.java
 C:\Users\Admin\Documents\GitHub\ACMNHAP\agricultural-crop-management-backend\src\main\java\org\example\QuanLyMuaVu\DTO\Request\AdminTaskUpdateRequest.java
 C:\Users\Admin\Documents\GitHub\ACMNHAP\agricultural-crop-management-backend\src\main\java\org\example\QuanLyMuaVu\DTO\Request\AuthenticationRequest.java
@@ -105,6 +106,7 @@ C:\Users\Admin\Documents\GitHub\ACMNHAP\agricultural-crop-management-backend\src
 C:\Users\Admin\Documents\GitHub\ACMNHAP\agricultural-crop-management-backend\src\main\java\org\example\QuanLyMuaVu\DTO\Request\VarietyRequest.java
 C:\Users\Admin\Documents\GitHub\ACMNHAP\agricultural-crop-management-backend\src\main\java\org\example\QuanLyMuaVu\DTO\Response\AdminDashboardResponse.java
 C:\Users\Admin\Documents\GitHub\ACMNHAP\agricultural-crop-management-backend\src\main\java\org\example\QuanLyMuaVu\DTO\Response\AdminDocumentResponse.java
+C:\Users\Admin\Documents\GitHub\ACMNHAP\agricultural-crop-management-backend\src\main\java\org\example\QuanLyMuaVu\DTO\Response\AdminReportProjections.java
 C:\Users\Admin\Documents\GitHub\ACMNHAP\agricultural-crop-management-backend\src\main\java\org\example\QuanLyMuaVu\DTO\Response\AdminReportResponse.java
 C:\Users\Admin\Documents\GitHub\ACMNHAP\agricultural-crop-management-backend\src\main\java\org\example\QuanLyMuaVu\DTO\Response\AuthenticationResponse.java
 C:\Users\Admin\Documents\GitHub\ACMNHAP\agricultural-crop-management-backend\src\main\java\org\example\QuanLyMuaVu\DTO\Response\CropResponse.java

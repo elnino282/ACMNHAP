@@ -22,4 +22,8 @@ public class PlotResponse {
     String soilType;
     String status;
     LocalDateTime createdAt;
+
+    // Farm relationship for admin display
+    Integer farmId;
+    String farmName;
 }

@@ -120,6 +120,28 @@ public class AdminReportResponse {
     }
 
     /**
+     * Profit Report: Combined revenue and expense analysis.
+     * grossProfit = totalRevenue - totalExpense
+     * profitMargin = (grossProfit / totalRevenue) * 100, nullable if no revenue
+     * returnOnCost = (grossProfit / totalExpense) * 100, nullable if no expense
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ProfitReport {
+        private Integer seasonId;
+        private String seasonName;
+        private String cropName;
+        private String farmName;
+        private BigDecimal totalRevenue; // scale 0 (VND)
+        private BigDecimal totalExpense; // scale 0 (VND)
+        private BigDecimal grossProfit; // scale 0 (VND)
+        private BigDecimal profitMargin; // scale 2 (%), nullable if no revenue
+        private BigDecimal returnOnCost; // scale 2 (%), nullable if no expense
+    }
+
+    /**
      * Task Performance Report: Aggregated task metrics.
      * completionRate = completedTasks / totalTasks * 100
      * overdueRate = overdueTasks / totalTasks * 100

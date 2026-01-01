@@ -1,13 +1,13 @@
-import { Wheat, Coins, Calculator, DollarSign } from 'lucide-react';
+import { TrendingUp, Wheat, Coins, Calculator, DollarSign } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
 export interface SummaryStats {
     totalYield: number;
     totalCost: number;
-    costPerKg: number;
+    costPerKg: number | null;
     totalRevenue: number;
-    yieldUnit?: string;
-    currency?: string;
+    grossProfit: number;
+    profitMargin: number | null;
 }
 
 interface ReportsSummaryCardsProps {
@@ -46,7 +46,7 @@ export const ReportsSummaryCards: React.FC<ReportsSummaryCardsProps> = ({
         },
         {
             title: 'Cost per kg',
-            value: formatCurrency(stats.costPerKg),
+            value: stats.costPerKg != null ? formatCurrency(stats.costPerKg) : 'N/A',
             subtitle: 'Average efficiency',
             icon: Calculator,
             bgColor: 'bg-[#e3f2fd]',
@@ -60,12 +60,22 @@ export const ReportsSummaryCards: React.FC<ReportsSummaryCardsProps> = ({
             bgColor: 'bg-[#e8f5e9]',
             iconColor: 'text-[#3ba55d]',
         },
+        {
+            title: 'Gross Profit',
+            value: formatCurrency(stats.grossProfit),
+            subtitle: stats.profitMargin != null
+                ? `${stats.profitMargin.toFixed(1)}% margin`
+                : 'N/A margin',
+            icon: TrendingUp,
+            bgColor: stats.grossProfit >= 0 ? 'bg-[#e8f5e9]' : 'bg-[#ffebee]',
+            iconColor: stats.grossProfit >= 0 ? 'text-[#3ba55d]' : 'text-[#fb2c36]',
+        },
     ];
 
     if (isLoading) {
         return (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {[...Array(4)].map((_, i) => (
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                {[...Array(5)].map((_, i) => (
                     <Card key={i} className="rounded-[18px] border-[#e0e0e0] shadow-sm animate-pulse">
                         <CardContent className="p-6">
                             <div className="flex items-start justify-between">
@@ -84,7 +94,7 @@ export const ReportsSummaryCards: React.FC<ReportsSummaryCardsProps> = ({
     }
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
             {cards.map((card, index) => {
                 const Icon = card.icon;
                 return (

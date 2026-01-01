@@ -44,6 +44,8 @@ public class PlotMapper {
                 .soilType(plot.getSoilType())
                 .status(plot.getStatus())
                 .createdAt(plot.getCreatedAt())
+                .farmId(plot.getFarm() != null ? plot.getFarm().getId() : null)
+                .farmName(plot.getFarm() != null ? plot.getFarm().getName() : null)
                 .build();
     }
 }

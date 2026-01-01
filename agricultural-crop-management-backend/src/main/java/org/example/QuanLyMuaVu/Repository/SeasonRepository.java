@@ -5,6 +5,8 @@ import org.example.QuanLyMuaVu.Entity.User;
 import org.example.QuanLyMuaVu.Enums.SeasonStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -71,4 +73,20 @@ public interface SeasonRepository extends JpaRepository<Season, Integer>, JpaSpe
      * Used for deletion guard in VarietyService.
      */
     boolean existsByVariety_Id(Integer varietyId);
+
+    /**
+     * Find seasons by date range with optional filters.
+     * Uses date range for index optimization (no YEAR() function).
+     * Used by AdminReportsService for Yield/Cost/Revenue reports.
+     */
+    @Query("SELECT s FROM Season s " +
+            "WHERE s.startDate >= :from AND s.startDate < :to " +
+            "AND (:cropId IS NULL OR s.crop.id = :cropId) " +
+            "AND (:farmId IS NULL OR s.plot.farm.id = :farmId) " +
+            "AND (:plotId IS NULL OR s.plot.id = :plotId)")
+    List<Season> findByFilters(@Param("from") LocalDate from,
+            @Param("to") LocalDate to,
+            @Param("cropId") Integer cropId,
+            @Param("farmId") Integer farmId,
+            @Param("plotId") Integer plotId);
 }

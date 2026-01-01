@@ -14,7 +14,7 @@ interface Farm {
 
 interface Plot {
   id: number;
-  name: string;
+  plotName: string;
   area: number | null;
   soilType: string | null;
   farmId: number;
@@ -352,7 +352,7 @@ export function FarmsPlotsPage() {
             ) : (
               plots.map((plot) => (
                 <tr key={plot.id} className="border-b border-border hover:bg-muted/30">
-                  <td className="px-4 py-3 text-sm font-medium">{plot.name}</td>
+                  <td className="px-4 py-3 text-sm font-medium">{plot.plotName || '-'}</td>
                   <td className="px-4 py-3 text-sm">{plot.farmName || '-'}</td>
                   <td className="px-4 py-3 text-sm">{plot.area?.toFixed(2) || '-'}</td>
                   <td className="px-4 py-3 text-sm">{plot.soilType || '-'}</td>
@@ -487,7 +487,7 @@ export function FarmsPlotsPage() {
                         <div key={plot.id} className="p-3 bg-muted/30 rounded-lg border border-border">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="font-medium text-sm">{plot.name}</p>
+                              <p className="font-medium text-sm">{plot.plotName || '-'}</p>
                               <p className="text-xs text-muted-foreground">
                                 {plot.area?.toFixed(2) || '-'} ha • {plot.soilType || 'No soil type'}
                               </p>
@@ -529,7 +529,7 @@ export function FarmsPlotsPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Name</label>
-                    <p className="text-sm">{selectedPlot.name}</p>
+                    <p className="text-sm">{selectedPlot.plotName || '-'}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Farm</label>

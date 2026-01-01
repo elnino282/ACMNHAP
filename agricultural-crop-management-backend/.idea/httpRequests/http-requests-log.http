@@ -11,6 +11,23 @@ Accept: */*
   "role": "FARMER"
 }
 
+<> 2026-01-01T214218.200.json
+
+###
+
+POST http://localhost:8080/api/v1/auth/sign-up
+Content-Type: application/json
+Content-Length: 72
+User-Agent: IntelliJ HTTP Client/IntelliJ IDEA 2025.3.1
+Accept-Encoding: br, deflate, gzip, x-gzip
+Accept: */*
+
+{
+  "username": "farmer",
+  "password": "12345678",
+  "role": "FARMER"
+}
+
 <> 2025-12-24T172300.200.json
 
 ###

@@ -94,6 +94,8 @@ public class AdminPlotController {
                                 .soilType(p.getSoilType())
                                 .status(p.getStatus())
                                 .createdAt(p.getCreatedAt())
+                                .farmId(p.getFarm() != null ? p.getFarm().getId() : null)
+                                .farmName(p.getFarm() != null ? p.getFarm().getName() : null)
                                 .build();
         }
 

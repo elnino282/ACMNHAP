@@ -4,13 +4,23 @@ import { useQuery } from '@tanstack/react-query';
 import { ReportsHeader } from './components/ReportsHeader';
 import { ReportsFilterCard, type ReportFilters } from './components/ReportsFilterCard';
 import { ReportsSummaryCards, type SummaryStats } from './components/ReportsSummaryCards';
-import { ReportsChartTabs, type YieldDataItem, type CostDataItem, type RevenueDataItem } from './components/ReportsChartTabs';
+import {
+    ReportsChartTabs,
+    type YieldDataItem,
+    type CostDataItem,
+    type RevenueDataItem,
+    type ProfitDataItem,
+} from './components/ReportsChartTabs';
 import {
     adminReportsApi,
+    adminFarmApi,
+    adminPlotApi,
+    adminCropApi,
     reportsKeys,
+    type ReportFilterParams,
 } from '@/services/api.admin';
 
-// Default filter values
+// Default filter values (UI state - allows 'all')
 const DEFAULT_FILTERS: ReportFilters = {
     fromDate: '',
     toDate: '',
@@ -22,17 +32,77 @@ const DEFAULT_FILTERS: ReportFilters = {
     farmerId: 'all',
 };
 
+// Convert UI filters to API params (removes 'all', only sends numbers)
+const toApiParams = (ui: ReportFilters, year: number): ReportFilterParams => ({
+    year,
+    ...(ui.cropId !== 'all' && { cropId: parseInt(ui.cropId) }),
+    ...(ui.farmId !== 'all' && { farmId: parseInt(ui.farmId) }),
+    ...(ui.plotId !== 'all' && { plotId: parseInt(ui.plotId) }),
+});
+
 export const ReportsAnalytics: React.FC = () => {
-    // Filter state
+    // Filter state: draft (UI) and applied (sent to API)
     const [filters, setFilters] = useState<ReportFilters>(DEFAULT_FILTERS);
     const [appliedFilters, setAppliedFilters] = useState<ReportFilters>(DEFAULT_FILTERS);
-    const [activeTab, setActiveTab] = useState<'yield' | 'cost' | 'revenue'>('yield');
+    const [activeTab, setActiveTab] = useState<'yield' | 'cost' | 'revenue' | 'profit'>('yield');
 
     // Get current year for default queries
     const currentYear = new Date().getFullYear();
 
+    // Build API params from applied filters (only applied, not draft)
+    const apiParams = useMemo(() => toApiParams(appliedFilters, currentYear), [appliedFilters, currentYear]);
+
     // ═══════════════════════════════════════════════════════════════
-    // API QUERIES
+    // DROPDOWN DATA QUERIES
+    // ═══════════════════════════════════════════════════════════════
+
+    const { data: farmsData } = useQuery({
+        queryKey: ['adminFarms'],
+        queryFn: () => adminFarmApi.list(),
+        staleTime: 1000 * 60 * 10,
+    });
+
+    const { data: plotsData } = useQuery({
+        queryKey: ['adminPlots', appliedFilters.farmId],
+        queryFn: () => adminPlotApi.list({
+            farmId: appliedFilters.farmId !== 'all' ? parseInt(appliedFilters.farmId) : undefined
+        }),
+        staleTime: 1000 * 60 * 10,
+    });
+
+    const { data: cropsData } = useQuery({
+        queryKey: ['adminCrops'],
+        queryFn: () => adminCropApi.list(),
+        staleTime: 1000 * 60 * 10,
+    });
+
+    // Transform dropdown data
+    const farmOptions = useMemo(() =>
+        farmsData?.data?.content?.map((f: { id: number; name: string }) => ({
+            value: f.id.toString(),
+            label: f.name
+        })) ?? [],
+        [farmsData]
+    );
+
+    const plotOptions = useMemo(() =>
+        plotsData?.data?.content?.map((p: { id: number; plotName: string }) => ({
+            value: p.id.toString(),
+            label: p.plotName
+        })) ?? [],
+        [plotsData]
+    );
+
+    const cropOptions = useMemo(() =>
+        cropsData?.data?.map((c: { id: number; cropName: string }) => ({
+            value: c.id.toString(),
+            label: c.cropName
+        })) ?? [],
+        [cropsData]
+    );
+
+    // ═══════════════════════════════════════════════════════════════
+    // REPORT DATA QUERIES
     // ═══════════════════════════════════════════════════════════════
 
     const {
@@ -40,14 +110,8 @@ export const ReportsAnalytics: React.FC = () => {
         isLoading: yieldLoading,
         refetch: refetchYield
     } = useQuery({
-        queryKey: reportsKeys.yield(
-            currentYear,
-            appliedFilters.cropId !== 'all' ? parseInt(appliedFilters.cropId) : undefined
-        ),
-        queryFn: () => adminReportsApi.getYieldReport({
-            year: currentYear,
-            cropId: appliedFilters.cropId !== 'all' ? parseInt(appliedFilters.cropId) : undefined,
-        }),
+        queryKey: reportsKeys.yield(apiParams),
+        queryFn: () => adminReportsApi.getYieldReport(apiParams),
         staleTime: 1000 * 60 * 5,
     });
 
@@ -56,8 +120,8 @@ export const ReportsAnalytics: React.FC = () => {
         isLoading: costLoading,
         refetch: refetchCost
     } = useQuery({
-        queryKey: reportsKeys.cost(currentYear),
-        queryFn: () => adminReportsApi.getCostReport(currentYear),
+        queryKey: reportsKeys.cost(apiParams),
+        queryFn: () => adminReportsApi.getCostReport(apiParams),
         staleTime: 1000 * 60 * 5,
     });
 
@@ -66,29 +130,47 @@ export const ReportsAnalytics: React.FC = () => {
         isLoading: revenueLoading,
         refetch: refetchRevenue
     } = useQuery({
-        queryKey: reportsKeys.revenue(currentYear),
-        queryFn: () => adminReportsApi.getRevenueReport(currentYear),
+        queryKey: reportsKeys.revenue(apiParams),
+        queryFn: () => adminReportsApi.getRevenueReport(apiParams),
         staleTime: 1000 * 60 * 5,
     });
 
-    const isLoading = yieldLoading || costLoading || revenueLoading;
+    const {
+        data: profitReport,
+        isLoading: profitLoading,
+        refetch: refetchProfit
+    } = useQuery({
+        queryKey: reportsKeys.profit(apiParams),
+        queryFn: () => adminReportsApi.getProfitReport(apiParams),
+        staleTime: 1000 * 60 * 5,
+    });
+
+    const isLoading = yieldLoading || costLoading || revenueLoading || profitLoading;
 
     // ═══════════════════════════════════════════════════════════════
     // COMPUTED DATA
     // ═══════════════════════════════════════════════════════════════
 
-    // Summary statistics
+    // Summary statistics (calculated from totals, not avg of avgs)
     const summaryStats: SummaryStats = useMemo(() => {
-        const totalYield = yieldReport?.reduce((sum, item) => sum + (Number(item.actualYieldKg) || 0), 0) ?? 0;
-        const totalCost = costReport?.reduce((sum, item) => sum + (Number(item.totalExpense) || 0), 0) ?? 0;
-        const costPerKg = totalYield > 0 ? totalCost / totalYield : 0;
-        const totalRevenue = revenueReport?.reduce((sum, item) => sum + (Number(item.totalRevenue) || 0), 0) ?? 0;
+        const totalYield = yieldReport?.reduce((s, i) => s + (i.actualYieldKg ?? 0), 0) ?? 0;
+        const totalCost = costReport?.reduce((s, i) => s + (i.totalExpense ?? 0), 0) ?? 0;
+        const totalRevenue = revenueReport?.reduce((s, i) => s + (i.totalRevenue ?? 0), 0) ?? 0;
+
+        // Cost/kg from totals (not avg of per-season costPerKg)
+        const costPerKg = totalYield > 0 ? totalCost / totalYield : null;
+
+        // Profit calculations
+        const grossProfit = totalRevenue - totalCost;
+        const profitMargin = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : null;
 
         return {
             totalYield: Math.round(totalYield),
             totalCost: Math.round(totalCost),
-            costPerKg: Math.round(costPerKg * 1000) / 1000,
+            costPerKg: costPerKg != null ? Math.round(costPerKg * 1000) / 1000 : null,
             totalRevenue: Math.round(totalRevenue),
+            grossProfit: Math.round(grossProfit),
+            profitMargin: profitMargin != null ? Math.round(profitMargin * 10) / 10 : null,
         };
     }, [yieldReport, costReport, revenueReport]);
 
@@ -98,9 +180,9 @@ export const ReportsAnalytics: React.FC = () => {
 
         return yieldReport.map(item => ({
             group: item.seasonName || `Season ${item.seasonId}`,
-            expected: Number(item.expectedYieldKg) || 0,
-            actual: Number(item.actualYieldKg) || 0,
-            varianceKg: (Number(item.actualYieldKg) || 0) - (Number(item.expectedYieldKg) || 0),
+            expected: item.expectedYieldKg ?? 0,
+            actual: item.actualYieldKg ?? 0,
+            varianceKg: (item.actualYieldKg ?? 0) - (item.expectedYieldKg ?? 0),
             variancePercent: item.variancePercent ?? 0,
         }));
     }, [yieldReport]);
@@ -111,8 +193,8 @@ export const ReportsAnalytics: React.FC = () => {
 
         return costReport.map(item => ({
             group: item.seasonName || `Season ${item.seasonId}`,
-            totalCost: Number(item.totalExpense) || 0,
-            costPerKg: Number(item.costPerKg) || 0,
+            totalCost: item.totalExpense ?? 0,
+            costPerKg: item.costPerKg ?? 0,
         }));
     }, [costReport]);
 
@@ -121,9 +203,9 @@ export const ReportsAnalytics: React.FC = () => {
         if (!revenueReport) return [];
 
         return revenueReport.map(item => {
-            const revenue = Number(item.totalRevenue) || 0;
+            const revenue = item.totalRevenue ?? 0;
             const matchingCost = costReport?.find(c => c.seasonId === item.seasonId);
-            const cost = matchingCost ? Number(matchingCost.totalExpense) || 0 : 0;
+            const cost = matchingCost ? (matchingCost.totalExpense ?? 0) : 0;
             const profit = revenue - cost;
             const profitMargin = revenue > 0 ? (profit / revenue) * 100 : 0;
 
@@ -136,6 +218,19 @@ export const ReportsAnalytics: React.FC = () => {
         });
     }, [revenueReport, costReport]);
 
+    // Profit chart data (from profit endpoint)
+    const profitData: ProfitDataItem[] = useMemo(() => {
+        if (!profitReport) return [];
+
+        return profitReport.map(item => ({
+            group: item.seasonName || `Season ${item.seasonId}`,
+            revenue: item.totalRevenue ?? 0,
+            expense: item.totalExpense ?? 0,
+            grossProfit: item.grossProfit ?? 0,
+            profitMargin: item.profitMargin,
+        }));
+    }, [profitReport]);
+
     // ═══════════════════════════════════════════════════════════════
     // HANDLERS
     // ═══════════════════════════════════════════════════════════════
@@ -146,6 +241,7 @@ export const ReportsAnalytics: React.FC = () => {
                 refetchYield(),
                 refetchCost(),
                 refetchRevenue(),
+                refetchProfit(),
             ]);
             toast.success('Data refreshed successfully');
         } catch {
@@ -180,6 +276,15 @@ export const ReportsAnalytics: React.FC = () => {
         toast.success('Report exported successfully');
     };
 
+    const handleFiltersChange = (newFilters: ReportFilters) => {
+        // Reset plotId when farmId changes
+        if (newFilters.farmId !== filters.farmId) {
+            setFilters({ ...newFilters, plotId: 'all' });
+        } else {
+            setFilters(newFilters);
+        }
+    };
+
     const handleApplyFilters = () => {
         setAppliedFilters(filters);
         toast.success('Filters applied');
@@ -207,9 +312,12 @@ export const ReportsAnalytics: React.FC = () => {
             {/* Filter Card */}
             <ReportsFilterCard
                 filters={filters}
-                onFiltersChange={setFilters}
+                onFiltersChange={handleFiltersChange}
                 onApply={handleApplyFilters}
                 onReset={handleResetFilters}
+                farms={farmOptions}
+                plots={plotOptions}
+                crops={cropOptions}
                 isPlotDisabled={filters.farmId === 'all'}
                 isSeasonDisabled={filters.plotId === 'all'}
             />
@@ -225,8 +333,10 @@ export const ReportsAnalytics: React.FC = () => {
                 yieldData={yieldData}
                 costData={costData}
                 revenueData={revenueData}
+                profitData={profitData}
                 activeTab={activeTab}
                 onTabChange={setActiveTab}
+                onReset={handleResetFilters}
                 isLoading={isLoading}
             />
         </div>

@@ -1,6 +1,5 @@
 // Export admin feature components
 export { AdminDashboard } from './dashboard';
-export * from './document-management';
 
 // Export types for consumers
 export type {
