@@ -10,7 +10,7 @@ import { ReportsAnalytics } from '@/features/admin/reports-analytics';
 import { UsersRolesPage } from '@/pages/admin/UsersRolesPage';
 import { FarmsPlotsPage } from '@/pages/admin/FarmsPlotsPage';
 import { CropsVarietiesPage } from '@/pages/admin/CropsVarietiesPage';
-import { AiChatsPage } from '@/pages/admin/AiChatsPage';
+
 import { AdminDocumentsPage } from '@/pages/admin/AdminDocumentsPage';
 
 type AdminPortalContentProps = {
@@ -29,8 +29,7 @@ export function AdminPortalContent({ currentView }: AdminPortalContentProps) {
       return <CropsVarietiesPage />;
     case 'reports':
       return <ReportsAnalytics />;
-    case 'ai-chats':
-      return <AiChatsPage />;
+
     case 'documents':
       return <AdminDocumentsPage />;
     default:

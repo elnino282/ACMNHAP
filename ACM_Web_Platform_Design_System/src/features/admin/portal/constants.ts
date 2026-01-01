@@ -6,7 +6,6 @@ export const ADMIN_VIEW_CONFIG: Record<AdminView, AdminViewConfig> = {
   'farms-plots': { title: 'Farms & Plots / Trang trại & Lô đất', breadcrumbLabel: 'Farms & Plots' },
   'crops-varieties': { title: 'Crops & Varieties / Cây trồng & Giống', breadcrumbLabel: 'Crops & Varieties' },
   reports: { title: 'Reports / Báo cáo', breadcrumbLabel: 'Reports' },
-  'ai-chats': { title: 'AI Chats (audit) / Trò chuyện AI', breadcrumbLabel: 'AI Chats' },
   documents: { title: 'Documents / Tài liệu', breadcrumbLabel: 'Documents' },
 };
 

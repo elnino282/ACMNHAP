@@ -1,209 +1,233 @@
-import { Calendar, Filter, Download, Settings, ChevronDown, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useState, useMemo } from 'react';
+import { toast } from 'sonner';
+import { useQuery } from '@tanstack/react-query';
+import { ReportsHeader } from './components/ReportsHeader';
+import { ReportsFilterCard, type ReportFilters } from './components/ReportsFilterCard';
+import { ReportsSummaryCards, type SummaryStats } from './components/ReportsSummaryCards';
+import { ReportsChartTabs, type YieldDataItem, type CostDataItem, type RevenueDataItem } from './components/ReportsChartTabs';
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { useReportsAnalytics } from './hooks/useReportsAnalytics';
-import { getAlertIcon, getAlertBadge, getHealthStatus } from './utils';
+    adminReportsApi,
+    reportsKeys,
+} from '@/services/api.admin';
 
-import { KPICard } from './components/KPICard';
-import { UserActivityChart } from './components/UserActivityChart';
-import { MetricsTable } from './components/MetricsTable';
-import { SystemHealthCard } from './components/SystemHealthCard';
-import { RecentAlertsCard } from './components/RecentAlertsCard';
-import { FilterDrawer } from './components/FilterDrawer';
-import { SettingsDrawer } from './components/SettingsDrawer';
-
-// NEW Analytics Components
-import { YieldReportCard } from './components/YieldReportCard';
-import { CostAnalysisChart } from './components/CostAnalysisChart';
-import { InventoryOnHandTable } from './components/InventoryOnHandTable';
-
-import type { DateRange } from './types';
+// Default filter values
+const DEFAULT_FILTERS: ReportFilters = {
+    fromDate: '',
+    toDate: '',
+    farmId: 'all',
+    plotId: 'all',
+    seasonId: 'all',
+    cropId: 'all',
+    groupBy: 'season',
+    farmerId: 'all',
+};
 
 export const ReportsAnalytics: React.FC = () => {
-    const {
-        dateRange,
-        setDateRange,
-        filterOpen,
-        setFilterOpen,
-        settingsOpen,
-        setSettingsOpen,
-        userActivityFilter,
-        setUserActivityFilter,
-        cropFilter,
-        setCropFilter,
-        regionFilter,
-        setRegionFilter,
-        roleFilter,
-        setRoleFilter,
-        selectedYear,
-        setSelectedYear,
+    // Filter state
+    const [filters, setFilters] = useState<ReportFilters>(DEFAULT_FILTERS);
+    const [appliedFilters, setAppliedFilters] = useState<ReportFilters>(DEFAULT_FILTERS);
+    const [activeTab, setActiveTab] = useState<'yield' | 'cost' | 'revenue'>('yield');
 
-        // Real API data
-        yieldReport,
-        costReport,
-        taskPerformance,
-        incidentStatistics,
-        inventoryOnHand,
-
-        // Legacy/Mock data
-        kpiData,
-        metricsData,
-        systemAlerts,
-        systemHealth,
-        filteredUserActivityData,
-
-        // Loading states
-        isLoading,
-        isDeferredLoading,
-
-        // Handlers
-        handleExport,
-        handleFilterClear,
-        handleFilterApply,
-        handleSettingsSave,
-    } = useReportsAnalytics();
-
-    // Generate year options (current year and past 5 years)
+    // Get current year for default queries
     const currentYear = new Date().getFullYear();
-    const yearOptions = Array.from({ length: 6 }, (_, i) => currentYear - i);
+
+    // ═══════════════════════════════════════════════════════════════
+    // API QUERIES
+    // ═══════════════════════════════════════════════════════════════
+
+    const {
+        data: yieldReport,
+        isLoading: yieldLoading,
+        refetch: refetchYield
+    } = useQuery({
+        queryKey: reportsKeys.yield(
+            currentYear,
+            appliedFilters.cropId !== 'all' ? parseInt(appliedFilters.cropId) : undefined
+        ),
+        queryFn: () => adminReportsApi.getYieldReport({
+            year: currentYear,
+            cropId: appliedFilters.cropId !== 'all' ? parseInt(appliedFilters.cropId) : undefined,
+        }),
+        staleTime: 1000 * 60 * 5,
+    });
+
+    const {
+        data: costReport,
+        isLoading: costLoading,
+        refetch: refetchCost
+    } = useQuery({
+        queryKey: reportsKeys.cost(currentYear),
+        queryFn: () => adminReportsApi.getCostReport(currentYear),
+        staleTime: 1000 * 60 * 5,
+    });
+
+    const {
+        data: revenueReport,
+        isLoading: revenueLoading,
+        refetch: refetchRevenue
+    } = useQuery({
+        queryKey: reportsKeys.revenue(currentYear),
+        queryFn: () => adminReportsApi.getRevenueReport(currentYear),
+        staleTime: 1000 * 60 * 5,
+    });
+
+    const isLoading = yieldLoading || costLoading || revenueLoading;
+
+    // ═══════════════════════════════════════════════════════════════
+    // COMPUTED DATA
+    // ═══════════════════════════════════════════════════════════════
+
+    // Summary statistics
+    const summaryStats: SummaryStats = useMemo(() => {
+        const totalYield = yieldReport?.reduce((sum, item) => sum + (Number(item.actualYieldKg) || 0), 0) ?? 0;
+        const totalCost = costReport?.reduce((sum, item) => sum + (Number(item.totalExpense) || 0), 0) ?? 0;
+        const costPerKg = totalYield > 0 ? totalCost / totalYield : 0;
+        const totalRevenue = revenueReport?.reduce((sum, item) => sum + (Number(item.totalRevenue) || 0), 0) ?? 0;
+
+        return {
+            totalYield: Math.round(totalYield),
+            totalCost: Math.round(totalCost),
+            costPerKg: Math.round(costPerKg * 1000) / 1000,
+            totalRevenue: Math.round(totalRevenue),
+        };
+    }, [yieldReport, costReport, revenueReport]);
+
+    // Yield chart data
+    const yieldData: YieldDataItem[] = useMemo(() => {
+        if (!yieldReport) return [];
+
+        return yieldReport.map(item => ({
+            group: item.seasonName || `Season ${item.seasonId}`,
+            expected: Number(item.expectedYieldKg) || 0,
+            actual: Number(item.actualYieldKg) || 0,
+            varianceKg: (Number(item.actualYieldKg) || 0) - (Number(item.expectedYieldKg) || 0),
+            variancePercent: item.variancePercent ?? 0,
+        }));
+    }, [yieldReport]);
+
+    // Cost chart data
+    const costData: CostDataItem[] = useMemo(() => {
+        if (!costReport) return [];
+
+        return costReport.map(item => ({
+            group: item.seasonName || `Season ${item.seasonId}`,
+            totalCost: Number(item.totalExpense) || 0,
+            costPerKg: Number(item.costPerKg) || 0,
+        }));
+    }, [costReport]);
+
+    // Revenue chart data
+    const revenueData: RevenueDataItem[] = useMemo(() => {
+        if (!revenueReport) return [];
+
+        return revenueReport.map(item => {
+            const revenue = Number(item.totalRevenue) || 0;
+            const matchingCost = costReport?.find(c => c.seasonId === item.seasonId);
+            const cost = matchingCost ? Number(matchingCost.totalExpense) || 0 : 0;
+            const profit = revenue - cost;
+            const profitMargin = revenue > 0 ? (profit / revenue) * 100 : 0;
+
+            return {
+                group: item.seasonName || `Season ${item.seasonId}`,
+                revenue,
+                profit,
+                profitMargin,
+            };
+        });
+    }, [revenueReport, costReport]);
+
+    // ═══════════════════════════════════════════════════════════════
+    // HANDLERS
+    // ═══════════════════════════════════════════════════════════════
+
+    const handleRefresh = async () => {
+        try {
+            await Promise.all([
+                refetchYield(),
+                refetchCost(),
+                refetchRevenue(),
+            ]);
+            toast.success('Data refreshed successfully');
+        } catch {
+            toast.error('Failed to refresh data');
+        }
+    };
+
+    const handleExport = () => {
+        const headers = ['Group', 'Expected (kg)', 'Actual (kg)', 'Variance (kg)', 'Variance (%)'];
+        const rows = yieldData.map(item => [
+            item.group,
+            item.expected.toString(),
+            item.actual.toString(),
+            item.varianceKg.toString(),
+            `${item.variancePercent.toFixed(1)}%`
+        ]);
+
+        const csvContent = [headers, ...rows]
+            .map(row => row.join(','))
+            .join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `reports_${activeTab}_${new Date().toISOString().slice(0, 10)}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        toast.success('Report exported successfully');
+    };
+
+    const handleApplyFilters = () => {
+        setAppliedFilters(filters);
+        toast.success('Filters applied');
+    };
+
+    const handleResetFilters = () => {
+        setFilters(DEFAULT_FILTERS);
+        setAppliedFilters(DEFAULT_FILTERS);
+        toast.info('Filters reset');
+    };
+
+    // ═══════════════════════════════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════════════════════════════
 
     return (
-        <div className="p-6 max-w-[1600px] mx-auto space-y-6">
-            {/* Page Header */}
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div>
-                    <h1 className="mb-1">Reports & Analytics</h1>
-                    <p className="text-sm text-muted-foreground">
-                        Platform insights, metrics, and system health monitoring
-                    </p>
-                </div>
-                <div className="flex items-center gap-3">
-                    {/* Year Selector */}
-                    <Select
-                        value={String(selectedYear)}
-                        onValueChange={(v) => setSelectedYear(parseInt(v))}
-                    >
-                        <SelectTrigger className="w-[120px]">
-                            <Calendar className="w-4 h-4 mr-2" />
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {yearOptions.map(year => (
-                                <SelectItem key={year} value={String(year)}>{year}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-
-                    <Button variant="outline" onClick={() => setFilterOpen(true)}>
-                        <Filter className="w-4 h-4 mr-2" />
-                        Filters
-                    </Button>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button className="bg-[#2563EB] hover:bg-[#1E40AF]">
-                                <Download className="w-4 h-4 mr-2" />
-                                Export
-                                <ChevronDown className="w-4 h-4 ml-2" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                            <DropdownMenuItem onClick={() => handleExport('csv')}>
-                                Export as CSV
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleExport('excel')}>
-                                Export as Excel
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleExport('pdf')}>
-                                Export as PDF
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                    <Button variant="outline" size="icon" onClick={() => setSettingsOpen(true)}>
-                        <Settings className="w-4 h-4" />
-                    </Button>
-                </div>
-            </div>
-
-            {/* Loading indicator */}
-            {isLoading && (
-                <div className="flex items-center justify-center py-4">
-                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                    <span className="ml-2 text-muted-foreground">Loading reports...</span>
-                </div>
-            )}
-
-            {/* KPI Overview Row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-                {kpiData.map((kpi, index) => (
-                    <KPICard key={index} kpi={kpi} index={index} />
-                ))}
-            </div>
-
-
-
-            {/* Yield Report */}
-            <YieldReportCard
-                data={yieldReport}
-                isLoading={isDeferredLoading}
+        <div className="p-6 space-y-6 bg-[#f8f8f4] min-h-full">
+            {/* Header */}
+            <ReportsHeader
+                onRefresh={handleRefresh}
+                onExport={handleExport}
+                isLoading={isLoading}
             />
 
-            {/* Cost Analysis Chart */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <CostAnalysisChart
-                    data={costReport}
-                    isLoading={isDeferredLoading}
-                />
-                <UserActivityChart
-                    filteredUserActivityData={filteredUserActivityData}
-                    userActivityFilter={userActivityFilter}
-                    setUserActivityFilter={setUserActivityFilter}
-                />
-            </div>
-
-            {/* Inventory On-Hand Summary */}
-            <InventoryOnHandTable
-                data={inventoryOnHand}
-                isLoading={isDeferredLoading}
+            {/* Filter Card */}
+            <ReportsFilterCard
+                filters={filters}
+                onFiltersChange={setFilters}
+                onApply={handleApplyFilters}
+                onReset={handleResetFilters}
+                isPlotDisabled={filters.farmId === 'all'}
+                isSeasonDisabled={filters.plotId === 'all'}
             />
 
-            {/* Detailed Metrics Table */}
-            <MetricsTable metricsData={metricsData} />
-
-            {/* System Health & Alerts */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <SystemHealthCard systemHealth={systemHealth} getHealthStatus={getHealthStatus} />
-                <RecentAlertsCard
-                    systemAlerts={systemAlerts}
-                    getAlertIcon={getAlertIcon}
-                    getAlertBadge={getAlertBadge}
-                />
-            </div>
-
-            {/* Filter Sheet */}
-            <FilterDrawer
-                filterOpen={filterOpen}
-                setFilterOpen={setFilterOpen}
-                cropFilter={cropFilter}
-                setCropFilter={setCropFilter}
-                regionFilter={regionFilter}
-                setRegionFilter={setRegionFilter}
-                roleFilter={roleFilter}
-                setRoleFilter={setRoleFilter}
-                handleFilterClear={handleFilterClear}
-                handleFilterApply={handleFilterApply}
+            {/* Summary Cards */}
+            <ReportsSummaryCards
+                stats={summaryStats}
+                isLoading={isLoading}
             />
 
-            {/* Settings Drawer */}
-            <SettingsDrawer
-                settingsOpen={settingsOpen}
-                setSettingsOpen={setSettingsOpen}
-                handleSettingsSave={handleSettingsSave}
+            {/* Chart Tabs */}
+            <ReportsChartTabs
+                yieldData={yieldData}
+                costData={costData}
+                revenueData={revenueData}
+                activeTab={activeTab}
+                onTabChange={setActiveTab}
+                isLoading={isLoading}
             />
         </div>
     );

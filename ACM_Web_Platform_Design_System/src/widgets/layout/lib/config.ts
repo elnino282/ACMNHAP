@@ -21,7 +21,6 @@ export const portalConfig: Record<PortalType, PortalConfig> = {
             { id: 'farms-plots', label: 'Farms & Plots', icon: Warehouse },
             { id: 'crops-varieties', label: 'Crops & Varieties', icon: Sprout },
             { id: 'reports', label: 'Reports', icon: BarChart3 },
-            { id: 'ai-chats', label: 'AI Chats (audit)', icon: FileText },
             { id: 'documents', label: 'Documents', icon: FileText },
         ],
     },

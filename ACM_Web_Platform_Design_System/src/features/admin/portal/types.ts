@@ -6,7 +6,6 @@ export type AdminView =
   | 'farms-plots'
   | 'crops-varieties'
   | 'reports'
-  | 'ai-chats'
   | 'documents';
 
 export type AdminViewConfig = {
