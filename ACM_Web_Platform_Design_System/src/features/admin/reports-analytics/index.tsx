@@ -67,10 +67,36 @@ export const ReportsAnalytics: React.FC = () => {
         staleTime: 1000 * 60 * 10,
     });
 
+    // Fetch plots based on selected farm - only fetch when a farm is selected
+    const parsedFarmId = filters.farmId !== 'all' ? parseInt(filters.farmId, 10) : NaN;
+    const selectedFarmId = !isNaN(parsedFarmId) ? parsedFarmId : undefined;
+    const shouldFetchPlots = selectedFarmId !== undefined;
+    
     const { data: plotsData, isLoading: plotsLoading, error: plotsError } = useQuery({
-        queryKey: ['adminPlots'],
-        queryFn: () => adminPlotApi.list({ size: 1000 }), // Fetch all plots, filter on frontend by farmId
+        queryKey: ['adminPlots', selectedFarmId],
+        queryFn: async () => {
+            console.log('🔍 Fetching plots for farmId:', selectedFarmId);
+            const result = await adminPlotApi.list({ 
+                size: 1000,
+                farmId: selectedFarmId,
+            });
+            console.log('🔍 Plots API response:', result);
+            return result;
+        },
+        enabled: shouldFetchPlots,
         staleTime: 1000 * 60 * 10,
+    });
+    
+    // Debug log after query is defined
+    console.log('🔍 DEBUG plots state:', { 
+        filtersFarmId: filters.farmId, 
+        parsedFarmId,
+        selectedFarmId, 
+        shouldFetchPlots,
+        plotsDataResult: plotsData?.result,
+        plotsItems: plotsData?.result?.items,
+        plotsLoading,
+        plotsError 
     });
 
     const { data: cropsData, isLoading: cropsLoading, error: cropsError } = useQuery({
@@ -79,20 +105,12 @@ export const ReportsAnalytics: React.FC = () => {
         staleTime: 1000 * 60 * 10,
     });
 
-    // Debug: Log query states
-    console.log('🔍 Query States:', {
-        farms: { loading: farmsLoading, error: farmsError, data: farmsData },
-        plots: { loading: plotsLoading, error: plotsError, data: plotsData },
-        crops: { loading: cropsLoading, error: cropsError, data: cropsData },
-    });
-
     // Transform dropdown data
     // API returns: { status, code, message, result: { items: [...], page, size, totalElements, totalPages } } for paginated
     // API returns: { status, code, message, result: [...] } for non-paginated (crops)
     const farmOptions = useMemo(() => {
         // Farms API: paginated response -> result.items
         const items = farmsData?.result?.items ?? [];
-        console.log('🔍 farmsData:', farmsData, '-> items:', items);
         return items.map((f: { id: number; name: string }) => ({
             value: f.id.toString(),
             label: f.name
@@ -101,23 +119,18 @@ export const ReportsAnalytics: React.FC = () => {
 
     const plotOptions = useMemo(() => {
         // Plots API: paginated response -> result.items
+        // Server filters by farmId when a farm is selected
         const items = plotsData?.result?.items ?? [];
-        console.log('🔍 plotsData:', plotsData, '-> items:', items);
-        // Filter plots by selected farm if farmId is selected
-        const filteredItems = filters.farmId !== 'all'
-            ? items.filter((p: { id: number; plotName: string; farmId?: number | null }) => 
-                p.farmId != null && p.farmId === parseInt(filters.farmId))
-            : items;
-        return filteredItems.map((p: { id: number; plotName: string }) => ({
+        console.log('🔍 plotOptions computed:', { items, plotsData });
+        return items.map((p: { id: number; plotName: string }) => ({
             value: p.id.toString(),
             label: p.plotName
         }));
-    }, [plotsData, filters.farmId]);
+    }, [plotsData]);
 
     const cropOptions = useMemo(() => {
         // Crops API: non-paginated response -> result is array directly
         const items = cropsData?.result ?? [];
-        console.log('🔍 cropsData:', cropsData, '-> items:', items);
         // Handle case where result might be an object with 'items' property (if paginated)
         const content = Array.isArray(items) ? items : (items?.items ?? []);
         return content.map((c: { id: number; cropName: string }) => ({
@@ -352,6 +365,11 @@ export const ReportsAnalytics: React.FC = () => {
     };
 
     const handleFiltersChange = (newFilters: ReportFilters) => {
+        console.log('🔍 handleFiltersChange:', { 
+            oldFarmId: filters.farmId, 
+            newFarmId: newFilters.farmId,
+            changed: newFilters.farmId !== filters.farmId 
+        });
         // Reset plotId when farmId changes
         if (newFilters.farmId !== filters.farmId) {
             setFilters({ ...newFilters, plotId: 'all' });

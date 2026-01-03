@@ -51,9 +51,6 @@ export const ReportsFilterCard: React.FC<ReportsFilterCardProps> = ({
     crops = [],
     isPlotDisabled = false,
 }) => {
-    // Debug: Log received props
-    console.log('🎯 ReportsFilterCard props:', { farms, plots, crops, filters });
-    
     const handleChange = (key: keyof ReportFilters, value: string) => {
         onFiltersChange({ ...filters, [key]: value });
     };
