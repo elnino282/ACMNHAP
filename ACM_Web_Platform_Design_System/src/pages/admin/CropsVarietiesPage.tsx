@@ -33,6 +33,10 @@ export function CropsVarietiesPage() {
   // Filter state
   const [selectedCropId, setSelectedCropId] = useState<number | null>(null);
 
+  // Search state
+  const [cropSearchQuery, setCropSearchQuery] = useState('');
+  const [varietySearchQuery, setVarietySearchQuery] = useState('');
+
   // Form states
   const [showCropForm, setShowCropForm] = useState(false);
   const [showVarietyForm, setShowVarietyForm] = useState(false);
@@ -213,11 +217,47 @@ export function CropsVarietiesPage() {
     }
   }, [toast]);
 
+  // Filtered data based on search
+  const filteredCrops = crops.filter(crop =>
+    crop.cropName.toLowerCase().includes(cropSearchQuery.toLowerCase()) ||
+    (crop.description || '').toLowerCase().includes(cropSearchQuery.toLowerCase())
+  );
+
+  const filteredVarieties = varieties.filter(variety =>
+    variety.name.toLowerCase().includes(varietySearchQuery.toLowerCase()) ||
+    (variety.description || '').toLowerCase().includes(varietySearchQuery.toLowerCase()) ||
+    variety.cropName.toLowerCase().includes(varietySearchQuery.toLowerCase())
+  );
+
   const renderCrops = () => (
     <div className="space-y-4">
+      {/* Search Bar */}
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <input
+            type="text"
+            value={cropSearchQuery}
+            onChange={(e) => setCropSearchQuery(e.target.value)}
+            placeholder="Search crops..."
+            className="w-full pl-9 pr-3 py-2 border border-border rounded-lg bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+          />
+        </div>
+        <button
+          onClick={() => setCropSearchQuery(cropSearchQuery)}
+          className="inline-flex items-center gap-2 px-4 py-2 border border-border rounded-lg text-sm hover:bg-muted/50 transition-colors"
+        >
+          <Search className="h-4 w-4" />
+          Search
+        </button>
+      </div>
+
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">{crops.length} crops</span>
+          <span className="text-sm text-muted-foreground">
+            {filteredCrops.length} {filteredCrops.length === 1 ? 'crop' : 'crops'}
+            {cropSearchQuery && ` (filtered from ${crops.length})`}
+          </span>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -265,15 +305,15 @@ export function CropsVarietiesPage() {
                   </div>
                 </td>
               </tr>
-            ) : crops.length === 0 ? (
+            ) : filteredCrops.length === 0 ? (
               <tr>
                 <td colSpan={3} className="px-4 py-8 text-center text-muted-foreground">
                   <Leaf className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  No crops found
+                  {cropSearchQuery ? `No crops found matching "${cropSearchQuery}"` : 'No crops found'}
                 </td>
               </tr>
             ) : (
-              crops.map((crop) => (
+              filteredCrops.map((crop) => (
                 <tr key={crop.id} className="border-b border-border hover:bg-muted/30">
                   <td className="px-4 py-3 text-sm font-medium">{crop.cropName}</td>
                   <td className="px-4 py-3 text-sm text-muted-foreground">{crop.description || '-'}</td>
@@ -317,6 +357,27 @@ export function CropsVarietiesPage() {
 
   const renderVarieties = () => (
     <div className="space-y-4">
+      {/* Search Bar */}
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <input
+            type="text"
+            value={varietySearchQuery}
+            onChange={(e) => setVarietySearchQuery(e.target.value)}
+            placeholder="Search varieties..."
+            className="w-full pl-9 pr-3 py-2 border border-border rounded-lg bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+          />
+        </div>
+        <button
+          onClick={() => setVarietySearchQuery(varietySearchQuery)}
+          className="inline-flex items-center gap-2 px-4 py-2 border border-border rounded-lg text-sm hover:bg-muted/50 transition-colors"
+        >
+          <Search className="h-4 w-4" />
+          Search
+        </button>
+      </div>
+
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <select
@@ -329,7 +390,10 @@ export function CropsVarietiesPage() {
               <option key={c.id} value={c.id}>{c.cropName}</option>
             ))}
           </select>
-          <span className="text-sm text-muted-foreground">{varieties.length} varieties</span>
+          <span className="text-sm text-muted-foreground">
+            {filteredVarieties.length} {filteredVarieties.length === 1 ? 'variety' : 'varieties'}
+            {varietySearchQuery && ` (filtered from ${varieties.length})`}
+          </span>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -378,15 +442,15 @@ export function CropsVarietiesPage() {
                   </div>
                 </td>
               </tr>
-            ) : varieties.length === 0 ? (
+            ) : filteredVarieties.length === 0 ? (
               <tr>
                 <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
                   <Sprout className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  No varieties found
+                  {varietySearchQuery ? `No varieties found matching "${varietySearchQuery}"` : 'No varieties found'}
                 </td>
               </tr>
             ) : (
-              varieties.map((variety) => (
+              filteredVarieties.map((variety) => (
                 <tr key={variety.id} className="border-b border-border hover:bg-muted/30">
                   <td className="px-4 py-3 text-sm font-medium">{variety.name}</td>
                   <td className="px-4 py-3 text-sm">

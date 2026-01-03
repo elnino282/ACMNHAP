@@ -159,7 +159,10 @@ public enum ErrorCode {
                         "Cannot delete supply lot with recorded stock movements", HttpStatus.CONFLICT),
 
         // Document errors
-        DOCUMENT_NOT_FOUND("ERR_DOCUMENT_NOT_FOUND", "Document not found", HttpStatus.NOT_FOUND);
+        DOCUMENT_NOT_FOUND("ERR_DOCUMENT_NOT_FOUND", "Document not found", HttpStatus.NOT_FOUND),
+        DOCUMENT_NOT_INACTIVE("ERR_DOCUMENT_NOT_INACTIVE",
+                        "Only inactive documents can be permanently deleted. Please deactivate the document first.",
+                        HttpStatus.BAD_REQUEST);
 
         ErrorCode(String code, String message, HttpStatus statusCode) {
                 this.code = code;

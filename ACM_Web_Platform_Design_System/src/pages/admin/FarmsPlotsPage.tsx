@@ -432,8 +432,14 @@ export function FarmsPlotsPage() {
 
       {/* Farm Detail Drawer */}
       {showFarmDetail && selectedFarm && (
-        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm">
-          <div className="fixed right-0 top-0 h-full w-full max-w-md bg-card border-l border-border shadow-lg overflow-auto">
+        <div
+          className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm cursor-pointer"
+          onClick={() => setShowFarmDetail(false)}
+        >
+          <div
+            className="fixed right-0 top-0 h-full w-full max-w-md bg-card border-l border-border shadow-lg overflow-auto cursor-default"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-semibold">Farm Details</h2>
@@ -512,8 +518,14 @@ export function FarmsPlotsPage() {
 
       {/* Plot Detail Drawer */}
       {showPlotDetail && selectedPlot && (
-        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm">
-          <div className="fixed right-0 top-0 h-full w-full max-w-md bg-card border-l border-border shadow-lg overflow-auto">
+        <div
+          className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm cursor-pointer"
+          onClick={() => setShowPlotDetail(false)}
+        >
+          <div
+            className="fixed right-0 top-0 h-full w-full max-w-md bg-card border-l border-border shadow-lg overflow-auto cursor-default"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-semibold">Plot Details</h2>

@@ -338,6 +338,11 @@ export const adminDocumentApi = {
   delete: async (id: number): Promise<void> => {
     await httpClient.delete(`/api/v1/admin/documents/${id}`);
   },
+
+  /** DELETE /api/v1/admin/documents/{id}/permanent - Hard delete document (Admin only) */
+  hardDelete: async (id: number): Promise<void> => {
+    await httpClient.delete(`/api/v1/admin/documents/${id}/permanent`);
+  },
 };
 
 // ═══════════════════════════════════════════════════════════════

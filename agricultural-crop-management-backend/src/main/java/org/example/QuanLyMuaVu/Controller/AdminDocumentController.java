@@ -131,6 +131,24 @@ public class AdminDocumentController {
     }
 
     // ═══════════════════════════════════════════════════════════════
+    // HARD DELETE DOCUMENT (PERMANENT)
+    // ═══════════════════════════════════════════════════════════════
+
+    @Operation(summary = "Hard delete document (Admin)", description = "Permanently delete a document from database. Only INACTIVE documents can be hard deleted.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Success"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Document is not INACTIVE"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthorized"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Document not found")
+    })
+    @DeleteMapping("/{id}/permanent")
+    public ApiResponse<Void> hardDeleteDocument(@PathVariable Long id) {
+        adminDocumentService.hardDeleteDocument(id);
+        return ApiResponse.success(null);
+    }
+
+    // ═══════════════════════════════════════════════════════════════
     // HELPER METHODS
     // ═══════════════════════════════════════════════════════════════
 

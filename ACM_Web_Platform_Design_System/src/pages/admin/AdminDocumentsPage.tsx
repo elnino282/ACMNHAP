@@ -12,6 +12,8 @@ import {
     MoreVertical,
     Ban,
     CheckCircle2,
+    Trash2,
+    AlertTriangle,
 } from 'lucide-react';
 import {
     adminDocumentApi,
@@ -25,6 +27,12 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 // Document Type options
 const DOCUMENT_TYPES = ['POLICY', 'GUIDE', 'MANUAL', 'LEGAL', 'OTHER'] as const;
@@ -79,9 +87,14 @@ export function AdminDocumentsPage() {
     const [formStatus, setFormStatus] = useState<DocumentStatus>('ACTIVE');
     const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
-    // Confirmation dialog
+    // Confirmation dialog (Deactivate - Soft Delete)
     const [deactivateConfirm, setDeactivateConfirm] = useState<AdminDocument | null>(null);
     const [deactivateLoading, setDeactivateLoading] = useState(false);
+
+    // Hard Delete confirmation dialog
+    const [hardDeleteConfirm, setHardDeleteConfirm] = useState<AdminDocument | null>(null);
+    const [hardDeleteLoading, setHardDeleteLoading] = useState(false);
+    const [hardDeleteConfirmText, setHardDeleteConfirmText] = useState('');
 
     // Toast notification
     const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -222,6 +235,28 @@ export function AdminDocumentsPage() {
             });
         } finally {
             setDeactivateLoading(false);
+        }
+    };
+
+    // Hard delete document (permanent)
+    const handleHardDelete = async () => {
+        if (!hardDeleteConfirm || hardDeleteConfirmText !== 'DELETE') return;
+
+        setHardDeleteLoading(true);
+        try {
+            await adminDocumentApi.hardDelete(hardDeleteConfirm.id);
+            setToast({ type: 'success', message: `Document "${hardDeleteConfirm.title}" permanently deleted` });
+            setHardDeleteConfirm(null);
+            setHardDeleteConfirmText('');
+            fetchDocuments();
+        } catch (err: any) {
+            console.error('Failed to hard delete document:', err);
+            setToast({
+                type: 'error',
+                message: err?.response?.data?.message || 'Failed to permanently delete document',
+            });
+        } finally {
+            setHardDeleteLoading(false);
         }
     };
 
@@ -468,7 +503,7 @@ export function AdminDocumentsPage() {
                                                     <MoreVertical className="h-4 w-4 text-muted-foreground" />
                                                 </button>
                                             </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end" className="w-40">
+                                            <DropdownMenuContent align="end" className="w-48">
                                                 <DropdownMenuItem
                                                     onClick={() => openForm(doc)}
                                                     className="cursor-pointer"
@@ -485,6 +520,28 @@ export function AdminDocumentsPage() {
                                                     <Ban className="mr-2 h-4 w-4" />
                                                     Deactivate
                                                 </DropdownMenuItem>
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <span className="w-full">
+                                                                <DropdownMenuItem
+                                                                    onClick={() => setHardDeleteConfirm(doc)}
+                                                                    className="cursor-pointer text-destructive focus:text-destructive"
+                                                                    disabled={doc.status !== 'INACTIVE'}
+                                                                >
+                                                                    <Trash2 className="mr-2 h-4 w-4" />
+                                                                    Hard Delete
+                                                                </DropdownMenuItem>
+                                                            </span>
+                                                        </TooltipTrigger>
+                                                        {doc.status !== 'INACTIVE' && (
+                                                            <TooltipContent side="left">
+                                                                <p>Please deactivate the document</p>
+                                                                <p>before permanently deleting it.</p>
+                                                            </TooltipContent>
+                                                        )}
+                                                    </Tooltip>
+                                                </TooltipProvider>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     </td>
@@ -680,6 +737,76 @@ export function AdminDocumentsPage() {
                                     <>
                                         <Ban className="h-4 w-4" />
                                         Deactivate
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Hard Delete Confirmation Dialog */}
+            {hardDeleteConfirm && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-card border border-border rounded-lg shadow-xl w-full max-w-md">
+                        <div className="p-4 border-b border-border bg-destructive/5">
+                            <div className="flex items-center gap-2">
+                                <AlertTriangle className="h-5 w-5 text-destructive" />
+                                <h2 className="text-lg font-semibold text-destructive">Permanently Delete Document</h2>
+                            </div>
+                        </div>
+                        <div className="p-4 space-y-4">
+                            <p className="text-sm text-foreground">
+                                You are about to permanently delete{' '}
+                                <strong>"{hardDeleteConfirm.title}"</strong>.
+                            </p>
+                            <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3">
+                                <p className="text-sm text-destructive font-medium">
+                                    ⚠️ This action cannot be undone!
+                                </p>
+                                <p className="text-xs text-destructive/80 mt-1">
+                                    The document will be permanently removed from the database and cannot be recovered.
+                                </p>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-2">
+                                    Type <strong className="text-destructive">DELETE</strong> to confirm:
+                                </label>
+                                <input
+                                    type="text"
+                                    value={hardDeleteConfirmText}
+                                    onChange={(e) => setHardDeleteConfirmText(e.target.value)}
+                                    placeholder='Type "DELETE" to confirm'
+                                    className="w-full px-3 py-2 border border-border rounded-lg bg-background text-sm focus:outline-none focus:ring-2 focus:ring-destructive/20"
+                                    autoComplete="off"
+                                />
+                            </div>
+                        </div>
+                        <div className="flex justify-end gap-2 p-4 border-t border-border">
+                            <button
+                                onClick={() => {
+                                    setHardDeleteConfirm(null);
+                                    setHardDeleteConfirmText('');
+                                }}
+                                disabled={hardDeleteLoading}
+                                className="px-4 py-2 border border-border rounded-lg text-sm hover:bg-muted/50 disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleHardDelete}
+                                disabled={hardDeleteConfirmText !== 'DELETE' || hardDeleteLoading}
+                                className="inline-flex items-center gap-2 px-4 py-2 bg-destructive text-destructive-foreground rounded-lg text-sm hover:bg-destructive/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {hardDeleteLoading ? (
+                                    <>
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        Deleting...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Trash2 className="h-4 w-4" />
+                                        Permanently Delete
                                     </>
                                 )}
                             </button>

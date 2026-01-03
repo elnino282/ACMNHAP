@@ -213,6 +213,31 @@ public class AdminDocumentService {
     }
 
     // ═══════════════════════════════════════════════════════════════
+    // HARD DELETE DOCUMENT (PERMANENT)
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * Permanently delete a document from database.
+     * Only INACTIVE documents can be hard deleted to prevent accidental deletion.
+     *
+     * @param id Document ID
+     * @throws AppException if document not found or status is not INACTIVE
+     */
+    @Transactional
+    public void hardDeleteDocument(Long id) {
+        Document document = documentRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.DOCUMENT_NOT_FOUND));
+
+        // Business rule: Only allow hard delete for INACTIVE documents
+        if (document.getStatus() != DocumentStatus.INACTIVE) {
+            throw new AppException(ErrorCode.DOCUMENT_NOT_INACTIVE);
+        }
+
+        documentRepository.delete(document);
+        log.info("Hard deleted document: id={}, title={}", id, document.getTitle());
+    }
+
+    // ═══════════════════════════════════════════════════════════════
     // MAPPER
     // ═══════════════════════════════════════════════════════════════
 
