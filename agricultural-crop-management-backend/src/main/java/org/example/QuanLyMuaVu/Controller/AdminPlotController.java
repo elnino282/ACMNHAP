@@ -17,8 +17,6 @@ import org.example.QuanLyMuaVu.Exception.AppException;
 import org.example.QuanLyMuaVu.Exception.ErrorCode;
 import org.example.QuanLyMuaVu.Repository.PlotRepository;
 import org.example.QuanLyMuaVu.Repository.SeasonRepository;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -53,13 +51,41 @@ public class AdminPlotController {
                         @Parameter(description = "Page index (0-based)") @RequestParam(value = "page", defaultValue = "0") int page,
                         @Parameter(description = "Page size") @RequestParam(value = "size", defaultValue = "20") int size) {
 
-                Page<Plot> plotPage = plotRepository.findAll(PageRequest.of(page, size));
+                List<Plot> allPlots;
+                
+                // Filter by farmId if provided
+                if (farmId != null) {
+                        allPlots = plotRepository.findAllByFarm_Id(farmId);
+                } else {
+                        allPlots = plotRepository.findAll();
+                }
+                
+                // Apply keyword filter if provided
+                if (keyword != null && !keyword.trim().isEmpty()) {
+                        String keywordLower = keyword.toLowerCase();
+                        allPlots = allPlots.stream()
+                                .filter(p -> p.getPlotName() != null && p.getPlotName().toLowerCase().contains(keywordLower))
+                                .collect(Collectors.toList());
+                }
+                
+                // Manual pagination
+                int start = page * size;
+                int end = Math.min(start + size, allPlots.size());
+                List<Plot> pageContent = start < allPlots.size() ? allPlots.subList(start, end) : List.of();
 
-                List<PlotResponse> content = plotPage.getContent().stream()
+                List<PlotResponse> content = pageContent.stream()
                                 .map(this::toPlotResponse)
                                 .collect(Collectors.toList());
 
-                return ApiResponse.success(PageResponse.of(plotPage, content));
+                // Build PageResponse manually (no builder pattern available)
+                PageResponse<PlotResponse> pageResponse = new PageResponse<>();
+                pageResponse.setItems(content);
+                pageResponse.setPage(page);
+                pageResponse.setSize(size);
+                pageResponse.setTotalElements(allPlots.size());
+                pageResponse.setTotalPages((int) Math.ceil((double) allPlots.size() / size));
+
+                return ApiResponse.success(pageResponse);
         }
 
         @Operation(summary = "Get plot detail (Admin)", description = "Get detailed information about a specific plot")

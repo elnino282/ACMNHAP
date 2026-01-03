@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { toast } from 'sonner';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { ReportsHeader } from './components/ReportsHeader';
 import { ReportsFilterCard, type ReportFilters } from './components/ReportsFilterCard';
 import { ReportsSummaryCards, type SummaryStats } from './components/ReportsSummaryCards';
@@ -11,6 +11,7 @@ import {
     type RevenueDataItem,
     type ProfitDataItem,
 } from './components/ReportsChartTabs';
+import { ErrorBanner } from './components/ErrorState';
 import {
     adminReportsApi,
     adminFarmApi,
@@ -19,6 +20,12 @@ import {
     reportsKeys,
     type ReportFilterParams,
 } from '@/services/api.admin';
+import {
+    isValidDateRange,
+    getExportFileName,
+    generateCSV,
+    downloadFile,
+} from './utils';
 
 // Default filter values (UI state - allows 'all')
 const DEFAULT_FILTERS: ReportFilters = {
@@ -54,50 +61,70 @@ export const ReportsAnalytics: React.FC = () => {
     // DROPDOWN DATA QUERIES
     // ═══════════════════════════════════════════════════════════════
 
-    const { data: farmsData } = useQuery({
+    const { data: farmsData, isLoading: farmsLoading, error: farmsError } = useQuery({
         queryKey: ['adminFarms'],
         queryFn: () => adminFarmApi.list(),
         staleTime: 1000 * 60 * 10,
     });
 
-    const { data: plotsData } = useQuery({
-        queryKey: ['adminPlots', filters.farmId],
-        queryFn: () => adminPlotApi.list({
-            farmId: filters.farmId !== 'all' ? parseInt(filters.farmId) : undefined
-        }),
+    const { data: plotsData, isLoading: plotsLoading, error: plotsError } = useQuery({
+        queryKey: ['adminPlots'],
+        queryFn: () => adminPlotApi.list({ size: 1000 }), // Fetch all plots, filter on frontend by farmId
         staleTime: 1000 * 60 * 10,
     });
 
-    const { data: cropsData } = useQuery({
+    const { data: cropsData, isLoading: cropsLoading, error: cropsError } = useQuery({
         queryKey: ['adminCrops'],
         queryFn: () => adminCropApi.list(),
         staleTime: 1000 * 60 * 10,
     });
 
+    // Debug: Log query states
+    console.log('🔍 Query States:', {
+        farms: { loading: farmsLoading, error: farmsError, data: farmsData },
+        plots: { loading: plotsLoading, error: plotsError, data: plotsData },
+        crops: { loading: cropsLoading, error: cropsError, data: cropsData },
+    });
+
     // Transform dropdown data
-    const farmOptions = useMemo(() =>
-        farmsData?.data?.content?.map((f: { id: number; name: string }) => ({
+    // API returns: { status, code, message, result: { items: [...], page, size, totalElements, totalPages } } for paginated
+    // API returns: { status, code, message, result: [...] } for non-paginated (crops)
+    const farmOptions = useMemo(() => {
+        // Farms API: paginated response -> result.items
+        const items = farmsData?.result?.items ?? [];
+        console.log('🔍 farmsData:', farmsData, '-> items:', items);
+        return items.map((f: { id: number; name: string }) => ({
             value: f.id.toString(),
             label: f.name
-        })) ?? [],
-        [farmsData]
-    );
+        }));
+    }, [farmsData]);
 
-    const plotOptions = useMemo(() =>
-        plotsData?.data?.content?.map((p: { id: number; plotName: string }) => ({
+    const plotOptions = useMemo(() => {
+        // Plots API: paginated response -> result.items
+        const items = plotsData?.result?.items ?? [];
+        console.log('🔍 plotsData:', plotsData, '-> items:', items);
+        // Filter plots by selected farm if farmId is selected
+        const filteredItems = filters.farmId !== 'all'
+            ? items.filter((p: { id: number; plotName: string; farmId?: number | null }) => 
+                p.farmId != null && p.farmId === parseInt(filters.farmId))
+            : items;
+        return filteredItems.map((p: { id: number; plotName: string }) => ({
             value: p.id.toString(),
             label: p.plotName
-        })) ?? [],
-        [plotsData]
-    );
+        }));
+    }, [plotsData, filters.farmId]);
 
-    const cropOptions = useMemo(() =>
-        cropsData?.data?.map((c: { id: number; cropName: string }) => ({
+    const cropOptions = useMemo(() => {
+        // Crops API: non-paginated response -> result is array directly
+        const items = cropsData?.result ?? [];
+        console.log('🔍 cropsData:', cropsData, '-> items:', items);
+        // Handle case where result might be an object with 'items' property (if paginated)
+        const content = Array.isArray(items) ? items : (items?.items ?? []);
+        return content.map((c: { id: number; cropName: string }) => ({
             value: c.id.toString(),
             label: c.cropName
-        })) ?? [],
-        [cropsData]
-    );
+        }));
+    }, [cropsData]);
 
     // ═══════════════════════════════════════════════════════════════
     // REPORT DATA QUERIES
@@ -106,44 +133,58 @@ export const ReportsAnalytics: React.FC = () => {
     const {
         data: yieldReport,
         isLoading: yieldLoading,
+        isFetching: yieldFetching,
+        isError: yieldError,
         refetch: refetchYield
     } = useQuery({
         queryKey: reportsKeys.yield(apiParams),
         queryFn: () => adminReportsApi.getYieldReport(apiParams),
+        placeholderData: keepPreviousData, // 🔥 Smooth UX: keeps old data visible while fetching
         staleTime: 1000 * 60 * 5,
     });
 
     const {
         data: costReport,
         isLoading: costLoading,
+        isFetching: costFetching,
+        isError: costError,
         refetch: refetchCost
     } = useQuery({
         queryKey: reportsKeys.cost(apiParams),
         queryFn: () => adminReportsApi.getCostReport(apiParams),
+        placeholderData: keepPreviousData,
         staleTime: 1000 * 60 * 5,
     });
 
     const {
         data: revenueReport,
         isLoading: revenueLoading,
+        isFetching: revenueFetching,
+        isError: revenueError,
         refetch: refetchRevenue
     } = useQuery({
         queryKey: reportsKeys.revenue(apiParams),
         queryFn: () => adminReportsApi.getRevenueReport(apiParams),
+        placeholderData: keepPreviousData,
         staleTime: 1000 * 60 * 5,
     });
 
     const {
         data: profitReport,
         isLoading: profitLoading,
+        isFetching: profitFetching,
+        isError: profitError,
         refetch: refetchProfit
     } = useQuery({
         queryKey: reportsKeys.profit(apiParams),
         queryFn: () => adminReportsApi.getProfitReport(apiParams),
+        placeholderData: keepPreviousData,
         staleTime: 1000 * 60 * 5,
     });
 
     const isLoading = yieldLoading || costLoading || revenueLoading || profitLoading;
+    const isFetching = yieldFetching || costFetching || revenueFetching || profitFetching;
+    const hasError = yieldError || costError || revenueError || profitError;
 
     // ═══════════════════════════════════════════════════════════════
     // COMPUTED DATA
@@ -247,31 +288,61 @@ export const ReportsAnalytics: React.FC = () => {
         }
     };
 
+    // Dynamic export based on active tab with smart file naming
     const handleExport = () => {
-        const headers = ['Group', 'Expected (kg)', 'Actual (kg)', 'Variance (kg)', 'Variance (%)'];
-        const rows = yieldData.map(item => [
-            item.group,
-            item.expected.toString(),
-            item.actual.toString(),
-            item.varianceKg.toString(),
-            `${item.variancePercent.toFixed(1)}%`
-        ]);
+        // Get data and headers based on active tab
+        let csvContent: string;
+        const farmName = filters.farmId !== 'all'
+            ? farmOptions.find((f: { value: string; label: string }) => f.value === filters.farmId)?.label
+            : undefined;
 
-        const csvContent = [headers, ...rows]
-            .map(row => row.join(','))
-            .join('\n');
+        switch (activeTab) {
+            case 'yield':
+                csvContent = generateCSV(yieldData, [
+                    { key: 'group', label: 'Season' },
+                    { key: 'expected', label: 'Expected (kg)' },
+                    { key: 'actual', label: 'Actual (kg)' },
+                    { key: 'varianceKg', label: 'Variance (kg)' },
+                    { key: 'variancePercent', label: 'Variance (%)' },
+                ]);
+                break;
+            case 'cost':
+                csvContent = generateCSV(costData, [
+                    { key: 'group', label: 'Season' },
+                    { key: 'totalCost', label: 'Total Cost (VND)' },
+                    { key: 'costPerKg', label: 'Cost per kg (VND)' },
+                ]);
+                break;
+            case 'revenue':
+                csvContent = generateCSV(revenueData, [
+                    { key: 'group', label: 'Season' },
+                    { key: 'revenue', label: 'Revenue (VND)' },
+                    { key: 'profit', label: 'Profit (VND)' },
+                    { key: 'profitMargin', label: 'Profit Margin (%)' },
+                ]);
+                break;
+            case 'profit':
+                csvContent = generateCSV(profitData, [
+                    { key: 'group', label: 'Season' },
+                    { key: 'revenue', label: 'Revenue (VND)' },
+                    { key: 'expense', label: 'Expense (VND)' },
+                    { key: 'grossProfit', label: 'Gross Profit (VND)' },
+                    { key: 'profitMargin', label: 'Profit Margin (%)' },
+                ]);
+                break;
+            default:
+                csvContent = '';
+        }
 
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
-        link.setAttribute('href', url);
-        link.setAttribute('download', `reports_${activeTab}_${new Date().toISOString().slice(0, 10)}.csv`);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        const fileName = getExportFileName({ reportType: activeTab, farmName });
+        downloadFile(csvContent, fileName);
 
-        toast.success('Report exported successfully');
+        const recordCount = activeTab === 'yield' ? yieldData.length
+            : activeTab === 'cost' ? costData.length
+                : activeTab === 'revenue' ? revenueData.length
+                    : profitData.length;
+
+        toast.success(`Exported ${recordCount} records to ${fileName}`);
     };
 
     const handleSaveView = () => {
@@ -290,6 +361,12 @@ export const ReportsAnalytics: React.FC = () => {
     };
 
     const handleApplyFilters = () => {
+        // Date range validation
+        if (filters.fromDate && filters.toDate && !isValidDateRange(filters.fromDate, filters.toDate)) {
+            toast.error('Invalid date range: Start date must be before or equal to end date');
+            return;
+        }
+
         setAppliedFilters(filters);
         toast.success('Filters applied');
     };
@@ -331,6 +408,15 @@ export const ReportsAnalytics: React.FC = () => {
                 crops={cropOptions}
                 isPlotDisabled={filters.farmId === 'all'}
             />
+
+            {/* Error Banner - Show when any query fails */}
+            {hasError && (
+                <ErrorBanner
+                    message="Failed to load some report data. Please try again."
+                    onRetry={handleRefresh}
+                    isRetrying={isFetching}
+                />
+            )}
 
             {/* Summary Cards - 5 column grid */}
             <ReportsSummaryCards

@@ -778,6 +778,8 @@ export type IncidentStatisticsReport = z.infer<typeof IncidentStatisticsReportSc
 // Helper: normalize params for stable query keys (remove undefined, fixed order)
 const normalizeReportParams = (p?: ReportFilterParams) => ({
   ...(p?.year !== undefined && { year: p.year }),
+  ...(p?.fromDate !== undefined && { fromDate: p.fromDate }),
+  ...(p?.toDate !== undefined && { toDate: p.toDate }),
   ...(p?.cropId !== undefined && { cropId: p.cropId }),
   ...(p?.farmId !== undefined && { farmId: p.farmId }),
   ...(p?.plotId !== undefined && { plotId: p.plotId }),
