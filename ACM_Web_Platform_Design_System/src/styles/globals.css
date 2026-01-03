@@ -1,42 +1,104 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600&family=Roboto+Mono:wght@400;500&display=swap');
+/* ============================================================
+   ACM Global Typography System
+   ============================================================
+   Base: 16px (html)
+   Primary Font: Roboto with sans-serif fallbacks
+   Number Formatting: Tabular Lining for data-heavy dashboards
+   ============================================================ */
+
+/* Google Fonts Import - Roboto with all necessary weights */
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap');
 
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  /* ============================================================
+     Typography Scale (rem-based for scalability)
+     Base: 16px = 1rem
+     ============================================================ */
+
+  /* Font Size Hierarchy */
+  --font-size-h1: 1.875rem;
+  /* 30px - Page Titles */
+  --font-size-h2: 1.25rem;
+  /* 20px - Section/Subtitle */
+  --font-size-h3: 1.25rem;
+  /* 20px - Section/Subtitle */
+  --font-size-body: 0.875rem;
+  /* 14px - Body Text (Default) */
+  --font-size-small: 0.75rem;
+  /* 12px - Captions, Labels */
+  --font-size-large: 1rem;
+  /* 16px - Emphasized Body */
+
+  /* Font Family */
+  --font-primary: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'Roboto Mono', 'Courier New', monospace;
+
+  /* Line Heights for Optimal Readability */
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.625;
+
+  /* Font Weights */
+  --font-weight-light: 300;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* Base font size for html */
   --font-size: 16px;
-  
-  /* ACM Agriculture-Inspired Color Palette */
-  --acm-primary: #3BA55D;          /* Primary Green - nature, plants, growth */
-  --acm-secondary: #4A90E2;        /* Soft Blue - sky, water, technology */
-  --acm-accent: #F4C542;           /* Accent Yellow - sunlight, harvest, energy */
-  
+
+  /* ============================================================
+     ACM Agriculture-Inspired Color Palette
+     ============================================================ */
+  --acm-primary: #3BA55D;
+  /* Primary Green - nature, plants, growth */
+  --acm-secondary: #4A90E2;
+  /* Soft Blue - sky, water, technology */
+  --acm-accent: #F4C542;
+  /* Accent Yellow - sunlight, harvest, energy */
+
   /* Neutral Backgrounds */
-  --acm-background: #F8F8F4;       /* Soft neutral background */
-  --acm-background-alt: #F3EFE6;   /* Earthy alternative background */
-  
+  --acm-background: #F8F8F4;
+  /* Soft neutral background */
+  --acm-background-alt: #F3EFE6;
+  /* Earthy alternative background */
+
   /* Text Colors */
-  --acm-text-primary: #333333;     /* Primary text - high readability */
-  --acm-text-secondary: #777777;   /* Secondary text - labels, captions */
-  
+  --acm-text-primary: #333333;
+  /* Primary text - high readability */
+  --acm-text-secondary: #777777;
+  /* Secondary text - labels, captions */
+
   /* Status Colors */
-  --acm-success: #3BA55D;          /* Success - same as primary green */
-  --acm-warning: #F4C542;          /* Warning - same as accent yellow */
-  --acm-error: #E74C3C;            /* Error - clear red for alerts */
-  
-  /* Base System Colors - Mapped to Agriculture Palette */
+  --acm-success: #3BA55D;
+  /* Success - same as primary green */
+  --acm-warning: #F4C542;
+  /* Warning - same as accent yellow */
+  --acm-error: #E74C3C;
+  /* Error - clear red for alerts */
+
+  /* ============================================================
+     Base System Colors - Mapped to Agriculture Palette
+     ============================================================ */
   --background: #F8F8F4;
   --foreground: #333333;
   --card: #ffffff;
   --card-foreground: #333333;
   --popover: #ffffff;
   --popover-foreground: #333333;
-  --primary: #3BA55D;              /* Primary Green */
+  --primary: #3BA55D;
+  /* Primary Green */
   --primary-foreground: #ffffff;
-  --secondary: #4A90E2;            /* Soft Blue */
+  --secondary: #4A90E2;
+  /* Soft Blue */
   --secondary-foreground: #ffffff;
   --muted: #F3EFE6;
   --muted-foreground: #777777;
-  --accent: #F4C542;               /* Accent Yellow */
+  --accent: #F4C542;
+  /* Accent Yellow */
   --accent-foreground: #333333;
   --destructive: #E74C3C;
   --destructive-foreground: #ffffff;
@@ -44,22 +106,24 @@
   --input: transparent;
   --input-background: #ffffff;
   --switch-background: #cbced4;
-  --font-weight-medium: 500;
-  --font-weight-normal: 400;
-  --font-weight-semibold: 600;
-  --font-weight-bold: 700;
   --ring: #3BA55D;
-  
+
   /* Chart Colors */
-  --chart-1: #3BA55D;              /* Primary Green */
-  --chart-2: #4A90E2;              /* Soft Blue */
-  --chart-3: #F4C542;              /* Accent Yellow */
-  --chart-4: #81C784;              /* Light Green */
-  --chart-5: #FF9800;              /* Orange */
-  
+  --chart-1: #3BA55D;
+  /* Primary Green */
+  --chart-2: #4A90E2;
+  /* Soft Blue */
+  --chart-3: #F4C542;
+  /* Accent Yellow */
+  --chart-4: #81C784;
+  /* Light Green */
+  --chart-5: #FF9800;
+  /* Orange */
+
   /* Radius - Updated to 12-16px range */
-  --radius: 0.875rem;              /* 14px - middle of 12-16px range */
-  
+  --radius: 0.875rem;
+  /* 14px - middle of 12-16px range */
+
   /* Sidebar */
   --sidebar: #ffffff;
   --sidebar-foreground: #333333;
@@ -156,84 +220,146 @@
     @apply border-border outline-ring/50;
   }
 
+  html {
+    font-size: var(--font-size);
+    /* 16px base for rem calculations */
+  }
+
   body {
     @apply bg-background text-foreground;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+    font-family: var(--font-primary);
+    font-size: var(--font-size-body);
+    /* 14px - Default body text */
+    line-height: var(--line-height-normal);
+    font-weight: var(--font-weight-normal);
+    font-variant-numeric: tabular-nums;
+    /* Tabular lining for all numbers */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 
 /**
- * ACM Typography System
- * Headings: Poppins SemiBold
- * Body: Inter Regular
- * Numeric: Roboto Mono
+ * ============================================================
+ * ACM Typography System - Refactored for Data-Heavy Dashboards
+ * ============================================================
+ * Primary Font: Roboto (all elements)
+ * Monospace: Roboto Mono (for numeric data)
+ * Font Size Hierarchy:
+ *   - H1 (Page Titles): 30px / 1.875rem
+ *   - H2/H3 (Section Titles): 20px / 1.25rem
+ *   - Body (Default): 14px / 0.875rem
+ * ============================================================
  */
 @layer base {
-  :where(:not(:has([class*=' text-']), :not(:has([class^='text-'])))) {
-    h1, h2, h3, h4, h5, h6 {
-      font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-weight: 600;
-    }
 
-    h1 {
-      font-size: 32px;
-      line-height: 1.3;
-    }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-primary);
+    font-weight: var(--font-weight-semibold);
+    color: var(--acm-text-primary);
+  }
 
-    h2 {
-      font-size: 24px;
-      line-height: 1.4;
-    }
+  h1 {
+    font-size: var(--font-size-h1);
+    /* 30px / 1.875rem - Page Titles */
+    line-height: var(--line-height-tight);
+    font-weight: var(--font-weight-bold);
+  }
 
-    h3 {
-      font-size: 20px;
-      line-height: 1.4;
-    }
+  h2 {
+    font-size: var(--font-size-h2);
+    /* 20px / 1.25rem - Section Titles */
+    line-height: var(--line-height-normal);
+  }
 
-    h4 {
-      font-size: 16px;
-      line-height: 1.5;
-    }
+  h3 {
+    font-size: var(--font-size-h3);
+    /* 20px / 1.25rem - Subtitles */
+    line-height: var(--line-height-normal);
+  }
 
-    p {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 16px;
-      font-weight: var(--font-weight-normal);
-      line-height: 1.6;
-    }
+  h4 {
+    font-size: var(--font-size-large);
+    /* 16px / 1rem */
+    line-height: var(--line-height-normal);
+  }
 
-    label {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 12px;
-      font-weight: var(--font-weight-medium);
-      line-height: 1.5;
-    }
+  h5,
+  h6 {
+    font-size: var(--font-size-body);
+    /* 14px / 0.875rem */
+    line-height: var(--line-height-normal);
+  }
 
-    button {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 14px;
-      font-weight: var(--font-weight-semibold);
-      line-height: 1.5;
-    }
+  p {
+    font-family: var(--font-primary);
+    font-size: var(--font-size-body);
+    /* 14px / 0.875rem */
+    font-weight: var(--font-weight-normal);
+    line-height: var(--line-height-relaxed);
+    color: var(--acm-text-primary);
+  }
 
-    input, textarea {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 16px;
-      font-weight: var(--font-weight-normal);
-      line-height: 1.5;
-    }
+  label {
+    font-family: var(--font-primary);
+    font-size: var(--font-size-small);
+    /* 12px / 0.75rem */
+    font-weight: var(--font-weight-medium);
+    line-height: var(--line-height-normal);
+    color: var(--acm-text-secondary);
+  }
+
+  button {
+    font-family: var(--font-primary);
+    font-size: var(--font-size-body);
+    /* 14px / 0.875rem */
+    font-weight: var(--font-weight-medium);
+    line-height: var(--line-height-normal);
+  }
+
+  input,
+  textarea,
+  select {
+    font-family: var(--font-primary);
+    font-size: var(--font-size-body);
+    /* 14px / 0.875rem */
+    font-weight: var(--font-weight-normal);
+    line-height: var(--line-height-normal);
+  }
+
+  /* Table cells inherit body typography */
+  td,
+  th {
+    font-family: var(--font-primary);
+    font-size: var(--font-size-body);
+    line-height: var(--line-height-normal);
   }
 }
 
-/* Numeric data uses Roboto Mono */
-.numeric,
-.font-numeric,
-[data-numeric="true"] {
-  font-family: 'Roboto Mono', 'Courier New', monospace;
+/* ============================================================
+   Tabular Lining Utilities for Number Alignment
+   ============================================================
+   Use .tabular-nums or .font-tabular on containers with numbers
+   to ensure vertical alignment in tables and statistics.
+   ============================================================ */
+.tabular-nums,
+.font-tabular,
+[data-tabular="true"] {
+  font-variant-numeric: tabular-nums;
 }
 
-html {
-  font-size: var(--font-size);
+/* Numeric data uses Roboto Mono for monospace alignment */
+.numeric,
+.font-numeric,
+.font-mono,
+[data-numeric="true"] {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
 }
 
 /* ACM Custom Utilities */
@@ -264,10 +390,13 @@ html {
 
 /* AI Float Button Custom Animations */
 @keyframes ai-breathing {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 0.4;
     transform: scale(1);
   }
+
   50% {
     opacity: 0.6;
     transform: scale(1.05);
@@ -279,6 +408,7 @@ html {
     transform: scale(1);
     opacity: 0.3;
   }
+
   100% {
     transform: scale(1.5);
     opacity: 0;

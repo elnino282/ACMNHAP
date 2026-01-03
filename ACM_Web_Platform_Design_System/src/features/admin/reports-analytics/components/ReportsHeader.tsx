@@ -31,8 +31,7 @@ export const ReportsHeader: React.FC<ReportsHeaderProps> = ({
             <div className="flex items-center justify-between">
                 {/* Left Section - Title & Description */}
                 <div className="flex flex-col gap-0.5">
-                    <h1 className="text-[30px] font-normal text-[#1f2937] leading-[45px] tracking-tight">
-                        Reports
+                    <h1 className="text-[30px] font-normal text-[#1f2937] leading-[45px] tracking-tight"> <b>Reports</b>
                     </h1>
                     <p className="text-sm text-[#6b7280] leading-5">
                         Analyze yield, costs, and revenue · Last updated {formattedDate}

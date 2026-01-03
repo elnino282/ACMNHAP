@@ -1,0 +1,248 @@
+/* ============================================================
+   ACM Typography System - Usage Examples
+   ============================================================
+   This file demonstrates how to apply the typography design system
+   to components, tables, and cards in your data-heavy dashboard.
+   ============================================================ */
+
+/* ============================================================
+   EXAMPLE 1: Dashboard Statistics Card
+   ============================================================ */
+.stats-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.stats-card__title {
+    font-family: var(--font-primary);
+    font-size: var(--font-size-h3);
+    /* 20px / 1.25rem */
+    font-weight: var(--font-weight-semibold);
+    color: var(--card-foreground);
+    margin-bottom: 0.5rem;
+}
+
+.stats-card__value {
+    font-family: var(--font-primary);
+    font-size: var(--font-size-h1);
+    /* 30px / 1.875rem */
+    font-weight: var(--font-weight-bold);
+    color: var(--primary);
+    font-variant-numeric: tabular-nums;
+    /* Ensure number alignment */
+}
+
+.stats-card__label {
+    font-family: var(--font-primary);
+    font-size: var(--font-size-small);
+    /* 12px / 0.75rem */
+    font-weight: var(--font-weight-medium);
+    color: var(--muted-foreground);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* ============================================================
+   EXAMPLE 2: Data Table with Tabular Lining Numbers
+   ============================================================ */
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-variant-numeric: tabular-nums;
+    /* Global tabular-nums for the table */
+}
+
+.data-table th {
+    font-family: var(--font-primary);
+    font-size: var(--font-size-small);
+    /* 12px - Column headers */
+    font-weight: var(--font-weight-semibold);
+    color: var(--muted-foreground);
+    text-align: left;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.data-table td {
+    font-family: var(--font-primary);
+    font-size: var(--font-size-body);
+    /* 14px - Table cells */
+    font-weight: var(--font-weight-normal);
+    color: var(--foreground);
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border);
+    line-height: var(--line-height-normal);
+}
+
+/* Numeric cells with monospace for exact alignment */
+.data-table td.numeric-cell {
+    font-family: var(--font-mono);
+    /* Roboto Mono for numbers */
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+
+/* Currency cells with formatting */
+.data-table td.currency-cell {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    font-weight: var(--font-weight-medium);
+}
+
+/* ============================================================
+   EXAMPLE 3: Section/Page Header
+   ============================================================ */
+.page-header {
+    margin-bottom: 2rem;
+}
+
+.page-header__title {
+    font-family: var(--font-primary);
+    font-size: var(--font-size-h1);
+    /* 30px / 1.875rem - Page Title */
+    font-weight: var(--font-weight-bold);
+    color: var(--foreground);
+    line-height: var(--line-height-tight);
+    margin-bottom: 0.5rem;
+}
+
+.page-header__subtitle {
+    font-family: var(--font-primary);
+    font-size: var(--font-size-h2);
+    /* 20px / 1.25rem - Subtitle */
+    font-weight: var(--font-weight-normal);
+    color: var(--muted-foreground);
+    line-height: var(--line-height-normal);
+}
+
+/* ============================================================
+   EXAMPLE 4: Dashboard KPI Card with Good Number Alignment
+   ============================================================ */
+.kpi-card {
+    display: flex;
+    flex-direction: column;
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.kpi-card__header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.kpi-card__icon {
+    width: 2rem;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--primary);
+    color: var(--primary-foreground);
+    border-radius: 0.5rem;
+}
+
+.kpi-card__title {
+    font-size: var(--font-size-small);
+    /* 12px */
+    font-weight: var(--font-weight-medium);
+    color: var(--muted-foreground);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.kpi-card__value {
+    font-size: var(--font-size-h1);
+    /* 30px - Large metric */
+    font-weight: var(--font-weight-bold);
+    color: var(--foreground);
+    font-variant-numeric: tabular-nums;
+    /* Critical for aligned numbers */
+    line-height: 1;
+    margin-bottom: 0.25rem;
+}
+
+.kpi-card__trend {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: var(--font-size-small);
+    font-weight: var(--font-weight-medium);
+}
+
+.kpi-card__trend--positive {
+    color: var(--acm-success);
+}
+
+.kpi-card__trend--negative {
+    color: var(--acm-error);
+}
+
+/* ============================================================
+   EXAMPLE 5: Form Field Styling
+   ============================================================ */
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+}
+
+.form-field__label {
+    font-size: var(--font-size-small);
+    /* 12px */
+    font-weight: var(--font-weight-medium);
+    color: var(--muted-foreground);
+}
+
+.form-field__input {
+    font-family: var(--font-primary);
+    font-size: var(--font-size-body);
+    /* 14px */
+    font-weight: var(--font-weight-normal);
+    padding: 0.625rem 0.875rem;
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) - 4px);
+    background: var(--input-background);
+    color: var(--foreground);
+    transition: border-color 0.15s ease;
+}
+
+.form-field__input:focus {
+    outline: none;
+    border-color: var(--ring);
+    box-shadow: 0 0 0 2px rgba(59, 165, 93, 0.15);
+}
+
+/* ============================================================
+   UTILITY CLASSES SUMMARY
+   ============================================================
+   
+   Font Size Classes (apply via CSS variables):
+   --font-size-h1: 1.875rem (30px) - Page titles
+   --font-size-h2: 1.25rem (20px)  - Section titles
+   --font-size-h3: 1.25rem (20px)  - Subtitles  
+   --font-size-body: 0.875rem (14px) - Default text
+   --font-size-small: 0.75rem (12px) - Labels, captions
+   --font-size-large: 1rem (16px) - Emphasized body
+   
+   Number Formatting:
+   .tabular-nums       - Apply font-variant-numeric: tabular-nums
+   .font-tabular       - Same as above (alias)
+   .numeric            - Roboto Mono + tabular-nums
+   .font-numeric       - Same as above (alias)
+   .font-mono          - Roboto Mono monospace font
+   
+   Font Family Variables:
+   --font-primary: Roboto + fallbacks
+   --font-mono: Roboto Mono + fallbacks
+   
+   ============================================================ */
