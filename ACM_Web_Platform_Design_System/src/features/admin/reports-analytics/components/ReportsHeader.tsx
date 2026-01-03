@@ -1,49 +1,73 @@
-import { FileBarChart, RefreshCw, Download } from 'lucide-react';
+import { RefreshCw, Download, Save, MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface ReportsHeaderProps {
     onRefresh: () => void;
     onExport: () => void;
+    onSaveView?: () => void;
     isLoading?: boolean;
+    lastUpdated?: string;
 }
 
 export const ReportsHeader: React.FC<ReportsHeaderProps> = ({
     onRefresh,
     onExport,
-    isLoading
+    onSaveView,
+    isLoading,
+    lastUpdated
 }) => {
+    // Format current date for display
+    const formattedDate = lastUpdated || new Date().toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+    });
+
     return (
-        <div className="flex items-start justify-between">
-            <div className="flex gap-3 items-start">
-                <div className="w-12 h-12 rounded-[18px] border border-[#e0e0e0] bg-white flex items-center justify-center">
-                    <FileBarChart className="w-6 h-6 text-[#2563eb]" />
-                </div>
-                <div className="flex flex-col">
-                    <h1 className="text-base font-normal text-[#1f2937]">Reports</h1>
-                    <p className="text-sm text-[#6b7280]">
-                        Analyze yield, costs, and revenue from existing season data
+        <div className="bg-white border-b border-[#e0e0e0] -mx-6 -mt-6 px-6 py-4 mb-6">
+            <div className="flex items-center justify-between">
+                {/* Left Section - Title & Description */}
+                <div className="flex flex-col gap-0.5">
+                    <h1 className="text-[30px] font-normal text-[#1f2937] leading-[45px] tracking-tight">
+                        Reports
+                    </h1>
+                    <p className="text-sm text-[#6b7280] leading-5">
+                        Analyze yield, costs, and revenue · Last updated {formattedDate}
                     </p>
                 </div>
-            </div>
-            <div className="flex items-center gap-2">
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={onRefresh}
-                    disabled={isLoading}
-                    className="h-8 px-3 rounded-[14px] border-[#e0e0e0] bg-[#f8f8f4]"
-                >
-                    <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-                    Refresh
-                </Button>
-                <Button
-                    size="sm"
-                    onClick={onExport}
-                    className="h-8 px-3 rounded-[14px] bg-[#3ba55d] hover:bg-[#2e8b4a]"
-                >
-                    <Download className="w-4 h-4 mr-2" />
-                    Export CSV
-                </Button>
+
+                {/* Right Section - Action Buttons */}
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={onSaveView}
+                        className="h-8 px-3 rounded-[14px] border-[#e0e0e0] bg-[#f8f8f4] hover:bg-[#f0f0ec] text-[#333] font-medium text-sm"
+                    >
+                        <Save className="w-4 h-4 mr-2" />
+                        Save View
+                    </Button>
+                    <Button
+                        size="sm"
+                        onClick={onExport}
+                        className="h-8 px-3 rounded-[14px] bg-[#3ba55d] hover:bg-[#2e8b4a] text-white font-medium text-sm"
+                    >
+                        <Download className="w-4 h-4 mr-2" />
+                        Export CSV
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={onRefresh}
+                        disabled={isLoading}
+                        className="h-9 w-9 rounded-[14px] hover:bg-[#f8f8f4]"
+                    >
+                        <RefreshCw className={`w-4 h-4 text-[#6b7280] ${isLoading ? 'animate-spin' : ''}`} />
+                    </Button>
+                </div>
             </div>
         </div>
     );

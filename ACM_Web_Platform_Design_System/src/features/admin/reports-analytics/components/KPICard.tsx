@@ -23,8 +23,8 @@ export const KPICard: React.FC<KPICardProps> = ({ kpi, index }) => {
                     <Badge
                         variant={kpi.trend === 'up' ? 'default' : 'secondary'}
                         className={`gap-1 ${kpi.trend === 'up'
-                                ? 'bg-emerald-100 text-emerald-700'
-                                : 'bg-red-100 text-red-700'
+                            ? 'bg-emerald-100 text-emerald-700'
+                            : 'bg-red-100 text-red-700'
                             }`}
                     >
                         <TrendIcon className="w-3 h-3" />

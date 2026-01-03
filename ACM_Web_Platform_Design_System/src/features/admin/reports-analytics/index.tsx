@@ -274,6 +274,12 @@ export const ReportsAnalytics: React.FC = () => {
         toast.success('Report exported successfully');
     };
 
+    const handleSaveView = () => {
+        // Save current filter state to localStorage or API
+        localStorage.setItem('reports_filters', JSON.stringify(appliedFilters));
+        toast.success('View saved successfully');
+    };
+
     const handleFiltersChange = (newFilters: ReportFilters) => {
         // Reset plotId when farmId changes
         if (newFilters.farmId !== filters.farmId) {
@@ -294,38 +300,45 @@ export const ReportsAnalytics: React.FC = () => {
         toast.info('Filters reset');
     };
 
+    const handleOpenMore = () => {
+        // Open advanced filter drawer/modal
+        toast.info('More filters coming soon');
+    };
+
     // ═══════════════════════════════════════════════════════════════
     // RENDER
     // ═══════════════════════════════════════════════════════════════
 
     return (
-        <div className="p-6 space-y-6 bg-[#f8f8f4] min-h-full">
-            {/* Header */}
+        <div className="p-6 space-y-6 bg-[#fafafa] min-h-full">
+            {/* Header - Sticky style matching Figma */}
             <ReportsHeader
                 onRefresh={handleRefresh}
                 onExport={handleExport}
+                onSaveView={handleSaveView}
                 isLoading={isLoading}
             />
 
-            {/* Filter Card */}
+            {/* Filter Card - Inline horizontal layout */}
             <ReportsFilterCard
                 filters={filters}
                 onFiltersChange={handleFiltersChange}
                 onApply={handleApplyFilters}
                 onReset={handleResetFilters}
+                onOpenMore={handleOpenMore}
                 farms={farmOptions}
                 plots={plotOptions}
                 crops={cropOptions}
                 isPlotDisabled={filters.farmId === 'all'}
             />
 
-            {/* Summary Cards */}
+            {/* Summary Cards - 5 column grid */}
             <ReportsSummaryCards
                 stats={summaryStats}
                 isLoading={isLoading}
             />
 
-            {/* Chart Tabs */}
+            {/* Chart Tabs - With collapsible table */}
             <ReportsChartTabs
                 yieldData={yieldData}
                 costData={costData}
